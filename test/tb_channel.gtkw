@@ -1,0 +1,56 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Wed Jul 30 04:48:32 2025
+[*]
+[dumpfile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_channel.vcd"
+[dumpfile_mtime] "Wed Jul 30 04:07:06 2025"
+[dumpfile_size] 16103382
+[savefile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_channel.gtkw"
+[timestart] 0
+[size] 2560 1345
+[pos] -27 -24
+*-19.000000 1651000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb_channel.
+[treeopen] tb_channel.channel_alu_unit.
+[treeopen] tb_channel.channel_alu_unit.alu_unit.
+[sst_width] 297
+[signals_width] 254
+[sst_expanded] 1
+[sst_vpaned_height] 418
+@28
+tb_channel.rst_n
+tb_channel.clk
+@200
+-
+@28
+tb_channel.channel_alu_unit.alu_unit.state[2:0]
+tb_channel.channel_alu_unit.alu_unit.first_term
+tb_channel.channel_alu_unit.alu_unit.next_sample
+@200
+-
+@28
+tb_channel.channel_alu_unit.alu_unit.pred
+@23
+tb_channel.channel_alu_unit.phase[11:0]
+@22
+tb_channel.channel_alu_unit.alu_unit.acc[11:0]
+tb_channel.channel_alu_unit.alu_unit.out_acc[11:0]
+@200
+-
+@28
+tb_channel.channel_alu_unit.alu_unit.src1_sel[2:0]
+tb_channel.channel_alu_unit.alu_unit.src2_sel[2:0]
+tb_channel.channel_alu_unit.alu_unit.replace_src2_with_amp
+@22
+tb_channel.channel_alu_unit.alu_unit.src1_external[11:0]
+@200
+-
+@22
+tb_channel.channel_alu_unit.alu_unit.alu.src1_in[11:0]
+tb_channel.channel_alu_unit.alu_unit.alu.src2_in[15:0]
+@200
+-
+@22
+tb_channel.channel_alu_unit.alu_unit.result[11:0]
+[pattern_trace] 1
+[pattern_trace] 0

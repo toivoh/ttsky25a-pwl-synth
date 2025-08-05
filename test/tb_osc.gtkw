@@ -1,0 +1,91 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Sat Aug  2 07:05:48 2025
+[*]
+[dumpfile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_osc.vcd"
+[dumpfile_mtime] "Sat Aug  2 07:03:31 2025"
+[dumpfile_size] 1579262
+[savefile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_osc.gtkw"
+[timestart] 0
+[size] 2599 1305
+[pos] -1 -1
+*-19.000000 3195000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb_osc.
+[treeopen] tb_osc.channel_alu_unit.
+[treeopen] tb_osc.channel_alu_unit.alu_unit.
+[sst_width] 297
+[signals_width] 244
+[sst_expanded] 1
+[sst_vpaned_height] 402
+@28
+tb_osc.rst_n
+tb_osc.clk
+@200
+-
+@28
+tb_osc.channel_alu_unit.alu_unit.state[2:0]
+@200
+-
+@800022
+tb_osc.channel_alu_unit.phase[11:0]
+@28
+(0)tb_osc.channel_alu_unit.phase[11:0]
+(1)tb_osc.channel_alu_unit.phase[11:0]
+(2)tb_osc.channel_alu_unit.phase[11:0]
+(3)tb_osc.channel_alu_unit.phase[11:0]
+(4)tb_osc.channel_alu_unit.phase[11:0]
+(5)tb_osc.channel_alu_unit.phase[11:0]
+(6)tb_osc.channel_alu_unit.phase[11:0]
+(7)tb_osc.channel_alu_unit.phase[11:0]
+(8)tb_osc.channel_alu_unit.phase[11:0]
+(9)tb_osc.channel_alu_unit.phase[11:0]
+(10)tb_osc.channel_alu_unit.phase[11:0]
+(11)tb_osc.channel_alu_unit.phase[11:0]
+@1001200
+-group_end
+@200
+-
+@28
+tb_osc.channel_alu_unit.alu_unit.src2_sel[2:0]
+@22
+tb_osc.channel_alu_unit.alu_unit.phase_external[11:0]
+@28
+tb_osc.channel_alu_unit.alu_unit.lfsr_bit
+@200
+-
+@800022
+tb_osc.channel_alu_unit.alu_unit.rev_phase[11:0]
+@28
+(0)tb_osc.channel_alu_unit.alu_unit.rev_phase[11:0]
+(1)tb_osc.channel_alu_unit.alu_unit.rev_phase[11:0]
+(2)tb_osc.channel_alu_unit.alu_unit.rev_phase[11:0]
+(3)tb_osc.channel_alu_unit.alu_unit.rev_phase[11:0]
+(4)tb_osc.channel_alu_unit.alu_unit.rev_phase[11:0]
+(5)tb_osc.channel_alu_unit.alu_unit.rev_phase[11:0]
+(6)tb_osc.channel_alu_unit.alu_unit.rev_phase[11:0]
+(7)tb_osc.channel_alu_unit.alu_unit.rev_phase[11:0]
+(8)tb_osc.channel_alu_unit.alu_unit.rev_phase[11:0]
+(9)tb_osc.channel_alu_unit.alu_unit.rev_phase[11:0]
+(10)tb_osc.channel_alu_unit.alu_unit.rev_phase[11:0]
+(11)tb_osc.channel_alu_unit.alu_unit.rev_phase[11:0]
+@22
+tb_osc.channel_alu_unit.alu_unit.alu.src2_in[15:0]
+tb_osc.channel_alu_unit.alu_unit.alu.src2_lshift[3:0]
+@200
+-
+@22
+tb_osc.channel_alu_unit.alu_unit.alu.src1[11:0]
+tb_osc.channel_alu_unit.alu_unit.alu.src2[11:0]
+@200
+-
+@22
+tb_osc.channel_alu_unit.alu_unit.oct_counter[23:0]
+tb_osc.channel_alu_unit.alu_unit.next_oct_counter[23:0]
+tb_osc.channel_alu_unit.alu_unit.all_oct_enables[23:0]
+tb_osc.channel_alu_unit.alu_unit.oct_enables[7:0]
+@23
+tb_osc.channel_alu_unit.alu_unit.oct_enables_lfsr[7:0]
+@1001200
+-group_end
+[pattern_trace] 1
+[pattern_trace] 0

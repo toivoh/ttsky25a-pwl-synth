@@ -1,0 +1,93 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Mon Aug  4 11:24:36 2025
+[*]
+[dumpfile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_mc.vcd"
+[dumpfile_mtime] "Mon Aug  4 10:58:59 2025"
+[dumpfile_size] 4669255
+[savefile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_mc.gtkw"
+[timestart] 10149000
+[size] 2187 807
+[pos] -1 -1
+*-19.000000 10943000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb_mc.
+[treeopen] tb_mc.mc_alu_unit.
+[treeopen] tb_mc.mc_alu_unit.alu_unit.
+[treeopen] tb_mc.mc_alu_unit.alu_unit.alu.
+[sst_width] 297
+[signals_width] 218
+[sst_expanded] 1
+[sst_vpaned_height] 230
+@28
+tb_mc.rst_n
+tb_mc.clk
+@200
+-
+@28
+tb_mc.mc_alu_unit.term_index[2:0]
+tb_mc.mc_alu_unit.state[2:0]
+tb_mc.mc_alu_unit.next_term
+tb_mc.mc_alu_unit.next_sample
+@22
+tb_mc.mc_alu_unit.alu_unit.oct_counter[23:0]
+@200
+-
+@22
+tb_mc.mc_alu_unit.alu_unit.detune_src_full[17:0]
+tb_mc.mc_alu_unit.alu_unit.detune_src_16[15:0]
+tb_mc.mc_alu_unit.alu_unit.detune_src[15:0]
+@200
+-
+@22
+tb_mc.mc_alu_unit.alu_unit.phase_external[11:0]
+@200
+-
+@22
+tb_mc.mc_alu_unit.alu_unit.out_acc[11:0]
+tb_mc.mc_alu_unit.alu_unit.acc_out[11:0]
+@28
+tb_mc.mc_alu_unit.alu_unit.pred
+tb_mc.mc_alu_unit.alu_unit.part
+@200
+-
+@28
+tb_mc.mc_alu_unit.alu_unit.inv_src1
+tb_mc.mc_alu_unit.alu_unit.inv_src2
+@200
+-
+@22
+tb_mc.mc_alu_unit.alu_unit.alu.src1_in[11:0]
+tb_mc.mc_alu_unit.alu_unit.alu.src2_in[15:0]
+tb_mc.mc_alu_unit.alu_unit.alu.src2_lshift[3:0]
+tb_mc.mc_alu_unit.alu_unit.alu.src2[11:0]
+@200
+-
+@28
+tb_mc.mc_alu_unit.alu_unit.alu.src2_rot
+@22
+tb_mc.mc_alu_unit.alu_unit.alu.src2_in[15:0]
+tb_mc.mc_alu_unit.alu_unit.alu.src2_shifter.shl_count[3:0]
+tb_mc.mc_alu_unit.alu_unit.alu.src2_shifter.shifter_in[15:0]
+tb_mc.mc_alu_unit.alu_unit.alu.src2_shifter.x[15:0]
+@200
+-
+@22
+tb_mc.mc_alu_unit.alu_unit.oct_counter[23:0]
+tb_mc.mc_alu_unit.alu_unit.acc[11:0]
+@28
+tb_mc.mc_alu_unit.alu_unit.pred
+tb_mc.mc_alu_unit.alu_unit.part
+@22
+tb_mc.mc_alu_unit.alu_unit.out_acc[11:0]
+@200
+-
+@28
+tb_mc.mc_alu_unit.pwm_out
+@22
+tb_mc.mc_alu_unit.pwm_counter[6:0]
+@28
+tb_mc.mc_alu_unit.sample_out_acc
+@29
+tb_mc.mc_alu_unit.new_out_acc
+[pattern_trace] 1
+[pattern_trace] 0

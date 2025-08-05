@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: © 2025 Tiny Tapeout
+# SPDX-FileCopyrightText: © 2025 Toivo Henningsson
 # SPDX-License-Identifier: Apache-2.0
 
 import cocotb
@@ -12,66 +12,98 @@ from tqv import TinyQV
 # The peripheral number is not used by the test harness.
 PERIPHERAL_NUM = 0
 
+def read_pwm_out(dut):
+	data = dut.uo_out.value.integer
+	assert data == 0 or data == 255
+	return data != 0
+
+async def read_pwm_run(dut, level, max_len=56):
+	n = 0
+	while (read_pwm_out(dut) == level):
+		await ClockCycles(dut.clk, 1)
+		n += 1
+		assert n <= max_len
+
+	return n
+
+async def read_pwm_duty(dut, aligned = False, max_period=56):
+	if not aligned:
+		await read_pwm_run(dut, False) # wait for PWM to go high
+		await read_pwm_run(dut, True) # wait for falling edge
+
+	n_low = await read_pwm_run(dut, False)
+	n_high = await read_pwm_run(dut, True)
+
+	return n_high, n_low + n_high
+
+
 @cocotb.test()
 async def test_project(dut):
-    dut._log.info("Start")
+	dut._log.info("Start")
 
-    # Set the clock period to 100 ns (10 MHz)
-    clock = Clock(dut.clk, 100, units="ns")
-    cocotb.start_soon(clock.start())
+	# Set the clock period to 100 ns (10 MHz)
+	clock = Clock(dut.clk, 100, units="ns")
+	cocotb.start_soon(clock.start())
 
-    # Interact with your design's registers through this TinyQV class.
-    # This will allow the same test to be run when your design is integrated
-    # with TinyQV - the implementation of this class will be replaces with a
-    # different version that uses Risc-V instructions instead of the SPI test
-    # harness interface to read and write the registers.
-    tqv = TinyQV(dut, PERIPHERAL_NUM)
+	# Interact with your design's registers through this TinyQV class.
+	# This will allow the same test to be run when your design is integrated
+	# with TinyQV - the implementation of this class will be replaces with a
+	# different version that uses Risc-V instructions instead of the SPI test
+	# harness interface to read and write the registers.
+	tqv = TinyQV(dut, PERIPHERAL_NUM)
 
-    # Reset
-    await tqv.reset()
+	# Reset
+	await tqv.reset()
 
-    dut._log.info("Test project behavior")
+	dut._log.info("Test project behavior")
 
-    # Test register write and read back
-    await tqv.write_word_reg(0, 0x82345678)
-    assert await tqv.read_byte_reg(0) == 0x78
-    assert await tqv.read_hword_reg(0) == 0x5678
-    assert await tqv.read_word_reg(0) == 0x82345678
+	nbits = [13, 6, 12, 16]
 
-    # Set an input value, in the example this will be added to the register value
-    dut.ui_in.value = 30
 
-    # Wait for two clock cycles to see the output values, because ui_in is synchronized over two clocks,
-    # and a further clock is required for the output to propagate.
-    await ClockCycles(dut.clk, 3)
+	await ClockCycles(dut.clk, 100)
+	# Check that PWM output stays at zero level, at expected period
+	n_high, n_total = await read_pwm_duty(dut)
+	assert n_total == 56
+	assert n_high == 24
+	n_high_0, n_total_0 = n_high, n_total
+	for i in range(9):
+		n_high, n_total = await read_pwm_duty(dut, True)
+		assert (n_high, n_total) == (n_high_0, n_total_0)
 
-    # The following assersion is just an example of how to check the output values.
-    # Change it to match the actual expected output of your module:
-    assert dut.uo_out.value == 0x96
+	# Test register write and read back
+	for i in range(16):
+		#print("i =", i)
+		data_in = (0x1234 + i*0x1111)&0xffff
+		await tqv.write_hword_reg(2*i, data_in)
+		data_out = await tqv.read_hword_reg(2*i)
+		expected = data_in & ((1 << nbits[i>>2]) - 1)
+		#print("data_out =", hex(data_out), "expected =", hex(expected))
+		assert data_out == expected
+	# Test reading back the registers again
+	for i in range(16):
+		#print("i =", i)
+		data_in = (0x1234 + i*0x1111)&0xffff
+		data_out = await tqv.read_hword_reg(2*i)
+		expected = data_in & ((1 << nbits[i>>2]) - 1)
+		#print("data_out =", hex(data_out), "expected =", hex(expected))
+		assert data_out == expected
 
-    # Input value should be read back from register 1
-    assert await tqv.read_byte_reg(4) == 30
+	# Check that not all PWM output samples remain at the zero level now that the amp registers are nonzero
+	ok = False
+	for i in range(10):
+		n_high, n_total = await read_pwm_duty(dut, i > 0)
+		#print("n_high =", n_high)
+		assert n_total == n_total_0
+		if n_high != n_high_0: ok = True
+	assert ok
 
-    # Zero should be read back from register 2
-    assert await tqv.read_word_reg(8) == 0
+	# Restore the amp registers to zero
+	for i in range(4): await tqv.write_hword_reg(2*(4+i), 0)
 
-    # A second write should work
-    await tqv.write_word_reg(0, 40)
-    assert dut.uo_out.value == 70
+	# Check that the PWM output samples are back at the zero level
+	for i in range(10):
+		n_high, n_total = await read_pwm_duty(dut, i > 0)
+		assert (n_high, n_total) == (n_high_0, n_total_0)
 
-    # Test the interrupt, generated when ui_in[6] goes high
-    dut.ui_in[6].value = 1
-    await ClockCycles(dut.clk, 1)
-    dut.ui_in[6].value = 0
 
-    # Interrupt asserted
-    await ClockCycles(dut.clk, 3)
-    assert await tqv.is_interrupt_asserted()
-
-    # Interrupt doesn't clear
-    await ClockCycles(dut.clk, 10)
-    assert await tqv.is_interrupt_asserted()
-    
-    # Write bottom bit of address 8 high to clear
-    await tqv.write_byte_reg(8, 1)
-    assert not await tqv.is_interrupt_asserted()
+	assert not await tqv.is_interrupt_asserted()
