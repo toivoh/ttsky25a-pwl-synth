@@ -5,7 +5,7 @@
 SIM ?= icarus
 TOPLEVEL_LANG ?= verilog
 SRC_DIR = $(PWD)/../src
-PROJECT_SOURCES = pwl_synth.sv pwl_synth_extra.sv memory.sv
+PROJECT_SOURCES = pwl_synth.sv pwl_synth_extra.sv pwl_synth_memory.sv
 ADDITIONAL_SOURCES =
 
 ifneq ($(GATES),yes)
