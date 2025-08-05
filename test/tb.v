@@ -45,8 +45,10 @@ module tb ();
 		.rst_n  (rst_n)     // not reset
 	);
 
+`ifndef GL_TEST
 	wire [5:0] amp0 = test_harness.user_peripheral.mc_alu_unit.amps[0];
 	wire [5:0] amp1 = test_harness.user_peripheral.mc_alu_unit.amps[1];
 	wire [5:0] amp2 = test_harness.user_peripheral.mc_alu_unit.amps[2];
 	wire [5:0] amp3 = test_harness.user_peripheral.mc_alu_unit.amps[3];
+`endif
 endmodule
