@@ -1,9 +1,9 @@
 # Tiny Tapeout project information
 project:
-  title:        ""      # Project title
-  author:       ""      # Your name
-  discord:      ""      # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
-  description:  ""      # One line description of what your project does
+  title:        "PWL synth"      # Project title
+  author:       "Toivo Henningsson"      # Your name
+  discord:      "possible_realities"      # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
+  description:  "4 channel chip tune/synth peripheral for TinyQV"      # One line description of what your project does
   language:     "Verilog" # other examples include SystemVerilog, Amaranth, VHDL, etc
   clock_hz:     64000000  # Clock frequency in Hz (or 0 if not applicable)
 
@@ -25,6 +25,11 @@ project:
     - "test_harness/spi_reg.sv"
     - "test_harness/synchronizer.sv"
 
+#    - "alt_project.sv"
+    - "pwl_synth.sv"
+    - "memory.sv"
+#    - "pwl_synth_extra.sv"
+
 
 # The pinout of your project. Leave unused pins blank. DO NOT delete or add any pins.
 # This section is for the datasheet/website. Use descriptive names (e.g., RX, TX, MOSI, SCL, SEG_A, etc.).
@@ -40,14 +45,14 @@ pinout:
   ui[7]: ""
 
   # Outputs
-  uo[0]: ""
-  uo[1]: ""
-  uo[2]: ""
-  uo[3]: ""
-  uo[4]: ""
-  uo[5]: ""
-  uo[6]: ""
-  uo[7]: ""
+  uo[0]: "pwm_out"
+  uo[1]: "pwm_out"
+  uo[2]: "pwm_out"
+  uo[3]: "pwm_out"
+  uo[4]: "pwm_out"
+  uo[5]: "pwm_out"
+  uo[6]: "pwm_out"
+  uo[7]: "pwm_out"
 
   # Bidirectional pins
   uio[0]: "user_interrupt"
