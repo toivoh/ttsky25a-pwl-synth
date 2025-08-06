@@ -15,7 +15,7 @@ You can also include images in this folder and reference them in the markdown. E
 
 Author: Toivo Henningsson
 
-Peripheral index: TODO
+Peripheral index: 7
 
 ## What it does
 
