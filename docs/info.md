@@ -213,7 +213,7 @@ All registers must be written with 16 bit writes at the given addresses, and hav
 The layouts of the mode and sweep registers are
 
 |      |       3 |        2:0 |
-|------|- -------|------------|
+|------|---------|------------|
 | mode | lfsr_en | detune_exp |
 
 |          |          12 |         11:8 | 7 |         6:4 |       3:0 |
