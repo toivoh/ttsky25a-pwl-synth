@@ -12,11 +12,13 @@ async def test_project(dut):
 	channel_alu_unit = dut.channel_alu_unit
 	alu_unit = channel_alu_unit.alu_unit
 
+	# Should match what is used in the RTL
 	LFSR_BITS = 3
 	#LFSR_BITS = 11
 
 	BITS = int(dut.BITS.value)
 	PHASE_BITS = BITS
+	MANTISSA_BITS = int(dut.MANTISSA_BITS.value)
 	NUM_STATES = int(alu_unit.STATE_LAST.value) + 1
 	PIPELINE = int(alu_unit.PIPELINE.value)
 	CHANNEL_MODE_BIT_NOISE = int(dut.CHANNEL_MODE_BIT_NOISE.value);
@@ -25,17 +27,16 @@ async def test_project(dut):
 	clock = Clock(dut.clk, 100, units="ns")
 	cocotb.start_soon(clock.start())
 
-	# NOTE! pwls_channel_ALU_unit used in this test uses a full 11 bit mantissa, unlike pwls_multichannel_ALU_unit which uses a 10 bit one
 	octave = 0
-	mantissa = 0b10101010101
+	mantissa = 0b1010101010
 	#mantissa = 0
 
 	#octave = 3
-	#mantissa = 2047
+	#mantissa = 1023
 
-	mantissa &= (-1 << (7-octave)) >> 3
+	mantissa &= (-1 << (7-octave)) >> 2
 
-	period0 = (1 << (PHASE_BITS - 1)) + mantissa
+	period0 = (1 << (PHASE_BITS - 1)) + (mantissa << (PHASE_BITS-1-MANTISSA_BITS))
 	period = (period0 << octave) >> 3
 
 	dut.octave.value = octave
@@ -46,8 +47,8 @@ async def test_project(dut):
 	dut.slope_exp.value = 5
 	dut.slope_offset.value = 1 << (BITS - 4) # full range is 0 to 2^(BITS-3)-1
 
-	#lfsr_on = False
-	lfsr_on = True
+	lfsr_on = False
+	#lfsr_on = True
 
 	phase_mask = -1
 	if lfsr_on:
@@ -55,13 +56,13 @@ async def test_project(dut):
 		dut.octave.value = octave
 
 		dut.channel_mode.value = 1 << CHANNEL_MODE_BIT_NOISE
-		mantissa = 0b1010101010
+		mantissa = 0b101010101
 		#mantissa = 0
-		#mantissa = 1024
+		#mantissa = 512
 		dut.mantissa.value = mantissa
 		phase_mask = (1 << (LFSR_BITS + 1)) - 1
-		#period = (8 + (mantissa>>8))
-		period = (2048 + mantissa) >> (11 - LFSR_BITS)
+		#period = (8 + ((mantissa<<1)>>8))
+		period = (2048 + (mantissa<<(PHASE_BITS-1-MANTISSA_BITS))) >> (11 - LFSR_BITS)
 		period <<= (octave + LFSR_HIGHEST_OCT + 1)
 
 	dut.rst_n.value = 0

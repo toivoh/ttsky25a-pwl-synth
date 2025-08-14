@@ -46,9 +46,39 @@ module tb ();
 	);
 
 `ifndef GL_TEST
+	wire [12:0] period0 = test_harness.user_peripheral.mc_alu_unit.periods[0];
+	wire [12:0] period1 = test_harness.user_peripheral.mc_alu_unit.periods[1];
+	wire [12:0] period2 = test_harness.user_peripheral.mc_alu_unit.periods[2];
+	wire [12:0] period3 = test_harness.user_peripheral.mc_alu_unit.periods[3];
+
 	wire [5:0] amp0 = test_harness.user_peripheral.mc_alu_unit.amps[0];
 	wire [5:0] amp1 = test_harness.user_peripheral.mc_alu_unit.amps[1];
 	wire [5:0] amp2 = test_harness.user_peripheral.mc_alu_unit.amps[2];
 	wire [5:0] amp3 = test_harness.user_peripheral.mc_alu_unit.amps[3];
+
+	wire [7:0] pwm_offset0 = test_harness.user_peripheral.mc_alu_unit.pwm_offsets[0];
+	wire [7:0] pwm_offset1 = test_harness.user_peripheral.mc_alu_unit.pwm_offsets[1];
+	wire [7:0] pwm_offset2 = test_harness.user_peripheral.mc_alu_unit.pwm_offsets[2];
+	wire [7:0] pwm_offset3 = test_harness.user_peripheral.mc_alu_unit.pwm_offsets[3];
+
+	wire [7:0] slope0_0 = test_harness.user_peripheral.mc_alu_unit.slopes0[0];
+	wire [7:0] slope0_1 = test_harness.user_peripheral.mc_alu_unit.slopes0[1];
+	wire [7:0] slope0_2 = test_harness.user_peripheral.mc_alu_unit.slopes0[2];
+	wire [7:0] slope0_3 = test_harness.user_peripheral.mc_alu_unit.slopes0[3];
+
+	wire [7:0] slope1_0 = test_harness.user_peripheral.mc_alu_unit.slopes1[0];
+	wire [7:0] slope1_1 = test_harness.user_peripheral.mc_alu_unit.slopes1[1];
+	wire [7:0] slope1_2 = test_harness.user_peripheral.mc_alu_unit.slopes1[2];
+	wire [7:0] slope1_3 = test_harness.user_peripheral.mc_alu_unit.slopes1[3];
+
+	wire [15:0] sweep0_0 = test_harness.user_peripheral.mc_alu_unit.sweeps0[0];
+	wire [15:0] sweep0_1 = test_harness.user_peripheral.mc_alu_unit.sweeps0[1];
+	wire [15:0] sweep0_2 = test_harness.user_peripheral.mc_alu_unit.sweeps0[2];
+	wire [15:0] sweep0_3 = test_harness.user_peripheral.mc_alu_unit.sweeps0[3];
+
+	wire [15:0] sweep1_0 = test_harness.user_peripheral.mc_alu_unit.sweeps1[0];
+	wire [15:0] sweep1_1 = test_harness.user_peripheral.mc_alu_unit.sweeps1[1];
+	wire [15:0] sweep1_2 = test_harness.user_peripheral.mc_alu_unit.sweeps1[2];
+	wire [15:0] sweep1_3 = test_harness.user_peripheral.mc_alu_unit.sweeps1[3];
 `endif
 endmodule

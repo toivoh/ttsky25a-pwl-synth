@@ -17,7 +17,7 @@ def read_pwm_out(dut):
 	assert data == 0 or data == 255
 	return data != 0
 
-async def read_pwm_run(dut, level, max_len=56):
+async def read_pwm_run(dut, level, max_len=64):
 	n = 0
 	while (read_pwm_out(dut) == level):
 		await ClockCycles(dut.clk, 1)
@@ -26,7 +26,7 @@ async def read_pwm_run(dut, level, max_len=56):
 
 	return n
 
-async def read_pwm_duty(dut, aligned = False, max_period=56):
+async def read_pwm_duty(dut, aligned = False, max_period=64):
 	if not aligned:
 		await read_pwm_run(dut, False) # wait for PWM to go high
 		await read_pwm_run(dut, True) # wait for falling edge
@@ -35,6 +35,17 @@ async def read_pwm_duty(dut, aligned = False, max_period=56):
 	n_high = await read_pwm_run(dut, True)
 
 	return n_high, n_low + n_high
+
+def remap_addr(addr):
+	channel = addr & 3
+	field = addr >> 2
+	return ((channel << 3) | field) << 1
+
+async def reg_write(tqv, addr, value):
+	await tqv.write_hword_reg(remap_addr(addr), value)
+
+async def reg_read(tqv, addr):
+	return await tqv.read_hword_reg(remap_addr(addr))
 
 
 @cocotb.test()
@@ -55,40 +66,45 @@ async def test_project(dut):
 	# Reset
 	await tqv.reset()
 
-	dut._log.info("Test project behavior")
+	dut._log.info("Test project behavior: PWL Synth")
 
-	nbits = [13, 6, 12, 16]
+	nbits = [13, 6, 8, 8, 8, 4]
 
 
+	dut._log.info("Check initial PWM output")
 	await ClockCycles(dut.clk, 100)
 	# Check that PWM output stays at zero level, at expected period
 	n_high, n_total = await read_pwm_duty(dut)
-	assert n_total == 56
-	assert n_high == 24
+	assert n_total == 64
+	assert n_high == 32
 	n_high_0, n_total_0 = n_high, n_total
 	for i in range(9):
 		n_high, n_total = await read_pwm_duty(dut, True)
 		assert (n_high, n_total) == (n_high_0, n_total_0)
 
 	# Test register write and read back
-	for i in range(16):
+	dut._log.info("Test register write and read back")
+	for i in range(24):
 		#print("i =", i)
 		data_in = (0x1234 + i*0x1111)&0xffff
-		await tqv.write_hword_reg(2*i, data_in)
-		data_out = await tqv.read_hword_reg(2*i)
+		await reg_write(tqv, i, data_in)
+		data_out = await reg_read(tqv, i)
 		expected = data_in & ((1 << nbits[i>>2]) - 1)
 		#print("data_out =", hex(data_out), "expected =", hex(expected))
 		assert data_out == expected
+
 	# Test reading back the registers again
-	for i in range(16):
+	dut._log.info("Test reading back the registers again")
+	for i in range(24):
 		#print("i =", i)
 		data_in = (0x1234 + i*0x1111)&0xffff
-		data_out = await tqv.read_hword_reg(2*i)
+		data_out = await reg_read(tqv, i)
 		expected = data_in & ((1 << nbits[i>>2]) - 1)
 		#print("data_out =", hex(data_out), "expected =", hex(expected))
 		assert data_out == expected
 
 	# Check that not all PWM output samples remain at the zero level now that the amp registers are nonzero
+	dut._log.info("Check PWM output when synth is running")
 	ok = False
 	for i in range(10):
 		n_high, n_total = await read_pwm_duty(dut, i > 0)
@@ -97,8 +113,53 @@ async def test_project(dut):
 		if n_high != n_high_0: ok = True
 	assert ok
 
+	# Apply sweep values
+	dut._log.info("Apply sweeps")
+	sweeps = [
+		# Period and amplitude sweeps
+		((16|1)<<8) | ((7 << 4)|1),
+		(( 0|0)<<8) | ((0 << 4)|1),
+		((16|1)<<8) | ((0 << 4)|0),
+		(( 0|1)<<8) | ((7 << 4)|1),
+		# PWM offset and slope sweeps
+		(( 0|1)<<8) | ((3<<5)| 0|1),
+		(( 0|1)<<8) | ((2<<5)|16|1),
+		((16|0)<<8) | ((1<<5)| 0|1),
+		((16|1)<<8) | ((0<<5)| 0|1),
+	]
+	sweep_dirs = [
+		-1,  0, -1,  1,
+		 1, -1,  0,  1,
+		 1,  0,  1,  1,
+		 1, -1,  0, -1,
+		 1,  1,  0, -1
+	]
+	for (i, sweep) in enumerate(sweeps):
+		await reg_write(tqv, 24+i, sweep)
+
+	# Check that not all PWM output samples remain at the zero level now that the amp registers are nonzero
+	dut._log.info("Check PWM output again and wait for sweeps to take effect")
+	ok = False
+	for i in range(32):
+		n_high, n_total = await read_pwm_duty(dut, i > 0)
+		#print("n_high =", n_high)
+		assert n_total == n_total_0
+		if n_high != n_high_0: ok = True
+	assert ok
+
+	dut._log.info("Check effect of sweeps")
+	for (i, dir) in enumerate(sweep_dirs):
+		data_in = (0x1234 + i*0x1111)&0xffff
+		data_out = await reg_read(tqv, i)
+		expected = data_in & ((1 << nbits[i>>2]) - 1)
+		if   dir == 0: assert data_out == expected
+		elif dir  < 0: assert data_out  < expected
+		elif dir  > 0: assert data_out  > expected
+
+	dut._log.info("Check PWM output when all amplitudes are zero")
+
 	# Restore the amp registers to zero
-	for i in range(4): await tqv.write_hword_reg(2*(4+i), 0)
+	for i in range(4): await reg_write(tqv, 4+i, 0)
 
 	# Check that the PWM output samples are back at the zero level
 	for i in range(10):

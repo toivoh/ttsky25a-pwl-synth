@@ -18,15 +18,28 @@
 const char* audio_fname = "audio.raw";
 
 
+#define USE_NEW_REGMAP_B
+
+
 #define DOWNSAMPLE
 const int log2_downsampling = 4;
 
 
 // 0: Mono: C - G - B - C
 // 1: Fading in chord one note at a time: D3 - G3 - C4 - Eb4  // C3 - E4 - G4 - Bb4
-// 2: falling noise frequency
-const int tune = 1;
+// 2: falling noise frequency (manual period update)
+// 3: falling oscillator frequency (manual period update)
+// 4: period sweep
+// 5: slow period sweep
+// 6: slow period sweep + amp sweep
+// 9: like 6, but starting at lowest period
+// 7: manual sweep slope, pwm_offset
+// 8: sweep slope, pwm_offset
+const int tune = 9;
 
+
+const int fastest_sweep = 2;
+const int fastest_sweep_supported = 2;
 
 //const bool DETUNE_ON = false;
 const bool DETUNE_ON = true;
@@ -34,8 +47,19 @@ const bool DETUNE_ON = true;
 
 const int PERIOD_ADDR = 0;
 const int AMP_ADDR = 1;
+
+#ifdef USE_NEW_REGMAP_B
+const int SLOPE0_ADDR = 2;
+const int SLOPE1_ADDR = 3;
+const int PWM_OFFSET_ADDR = 4;
+const int MODE_ADDR = 5;
+const int SWEEP_PA_ADDR = 6; // {period, amp} sweep
+const int SWEEP_WS_ADDR = 7; // {pwm_offset, slope} sweep
+#else
 const int MODE_ADDR = 2;
 const int PARAMS_ADDR = 3;
+const int SWEEP_ADDR = 4;
+#endif
 
 const int MODE_BIT_DETUNE0 = 0;
 const int MODE_BIT_NOISE = 3;
@@ -81,12 +105,63 @@ void reg_write(int addr, int channel, int data) {
 	top->reg_waddr = addr*4 + channel;
 	top->reg_wdata = data & 0xffff;
 	top->reg_we = 1;
+	top->en = 0; // pause the synth to avoid chaning the timing
 	timestep();
+	pwm_acc--; // the PWM output is not paused and the total will be increased by one, compensate
 	top->reg_we = 0;
+	top->en = 1;
+}
+
+int encode_sweep_rate(int sweep_rate) {
+	if (sweep_rate != 0 && sweep_rate <= fastest_sweep) {
+		if (fastest_sweep == fastest_sweep_supported) return 1;
+		else return fastest_sweep;
+	}
+	else return sweep_rate;
 }
 
 void period_write(int channel, int period) { reg_write(PERIOD_ADDR, channel, period); }
 void period_write(int channel, int octave, int mantissa) { period_write(channel, (octave << MANTISSA_BITS) | mantissa); }
+
+void amp_write(int channel, int amp) { reg_write(AMP_ADDR, channel, amp); }
+void mode_write(int channel, int detune_exp, bool lfsr_en=false) { reg_write(MODE_ADDR, channel, ((detune_exp*DETUNE_ON)&7) | (lfsr_en<<3)); }
+
+
+#ifdef USE_NEW_REGMAP_B
+
+// 8 bit pwm_offset and slopes
+void modeparams_write(int channel, int detune_exp, int pwm_offset, int slope0, int slope1) {
+	reg_write(MODE_ADDR, channel, ((detune_exp*DETUNE_ON)&7)); // TODO: lfsr_en?
+	reg_write(PWM_OFFSET_ADDR, channel, pwm_offset);
+	reg_write(SLOPE0_ADDR, channel, slope0);
+	reg_write(SLOPE1_ADDR, channel, slope1);
+}
+
+void sweep_period_amp_write(int channel, int period_sweep_rate, int period_sign, int amp_sweep_rate=0, int amp_target=0) {
+	reg_write(SWEEP_PA_ADDR, channel, ((encode_sweep_rate(period_sweep_rate) | (period_sign<<4)) << 8) | (amp_sweep_rate|(amp_target << 4)));
+}
+
+void sweep_pwmoffs_slope_write(int channel, int pwmoffs_sweep_rate, int pwmoffs_sign, int slope_sweep_rate=0, int slope_sign=0, int slope_cfg=0) {
+	reg_write(SWEEP_WS_ADDR, channel, ((encode_sweep_rate(pwmoffs_sweep_rate) | (pwmoffs_sign<<4)) << 8) | (slope_sweep_rate|(slope_sign << 4)|(slope_cfg<<5)));
+}
+
+#else // old regmap
+
+// 8 bit pwm_offset and slopes
+void modeparams_write(int channel, int detune_exp, int pwm_offset, int slope0, int slope1) {
+	int params = (pwm_offset<<8) | ((slope1&15)<<4) | ((slope0&15));
+	int mode = (detune_exp&7) | (((slope0>>4)&15)<<4) | (((slope1>>4)&15)<<8);
+	//printf("mpw: params = %d\n", params);
+	//printf("mpw: mode = %d\n", mode);
+	reg_write(PARAMS_ADDR, channel, params);
+	reg_write(MODE_ADDR, channel, mode);
+}
+
+void sweep_period_amp_write(int channel, int period_sweep_rate, int period_sign, int amp_sweep_rate=0, int amp_target=0) {
+	reg_write(SWEEP_ADDR, channel, (encode_sweep_rate(period_sweep_rate) | (period_sign<<4)) | ((amp_sweep_rate|(amp_target << 4)) << 5));
+}
+
+#endif
 
 
 
@@ -96,13 +171,17 @@ int main(int argc, char** argv) {
 	top = new Vpwls_multichannel_ALU_unit();
 
 	top->en = 1;
+	top->next_en = 1;
+	top->control_reg_write = 1;
+	top->state_reg_write = 1;
 
 	top->reset = 1; 
 	for (int i = 0; i < 10; i++) timestep();
 	top->reset = 0;
 
-	int output_offset = top->pwm_offset;
-	int pwm_offset = output_offset - (64-56);
+	int output_offset = top->pwm_out_offset;
+	//int pwm_offset = output_offset - (64-56);
+	int pwm_out_offset = output_offset - (64-64);
 	printf("output_offset = %d\n", output_offset);
 
 /*
@@ -127,7 +206,7 @@ int main(int argc, char** argv) {
 	const int LOG2_SAMPLES_PER_NOTE = 15;
 
 	int num_samples = NUM_NOTES << LOG2_SAMPLES_PER_NOTE;
-
+	//num_samples = 10; // !!!
 
 
 #ifdef SAVE_AUDIO
@@ -142,25 +221,31 @@ int main(int argc, char** argv) {
 // Tune setup
 // ==========
 
+	int tri_offset = (1 << (BITS-2-2)); // full range is 0 to 2^(BITS-2)-1
+	int slope_offset = 1 << (BITS - 4); // full range is 0 to 2^(BITS-3)-1
+	int pwm_offset_default = tri_offset >> (BITS-2-8);
+	int slope_default = slope_offset >> (BITS-3-4);
 
-	for (int channel = 0; channel < NUM_CHANNELS; channel++) {
-		reg_write(AMP_ADDR, channel, 0); // Silence all channels
-		//reg_write(MODE_ADDR, channel, 6*DETUNE_ON);
+	if (tune != 7) {
+		for (int channel = 0; channel < NUM_CHANNELS; channel++) {
+			amp_write(channel, 0); // Silence all channels
+			//mode_write(channel, 6);
 
-		//int tri_offset = (1 << (BITS-1-2)) - (1 << (BITS-2));
-		//int tri_offset = (1 << (BITS-2-2)) - (1 << (BITS-2));
-		int tri_offset = (1 << (BITS-2-2)); // full range is 0 to 2^(BITS-2)-1
-		int slope_offset = 1 << (BITS - 4); // full range is 0 to 2^(BITS-3)-1
-		int params = (((tri_offset >> (BITS-2-8))&255)<<8) | ((slope_offset >> (BITS-3-4))*17);
-		//printf("params = %d\n", params);
-		reg_write(PARAMS_ADDR, channel, params);
+			//int tri_offset = (1 << (BITS-1-2)) - (1 << (BITS-2));
+			//int tri_offset = (1 << (BITS-2-2)) - (1 << (BITS-2));
+			int params = (((tri_offset >> (BITS-2-8))&255)<<8) | ((slope_offset >> (BITS-3-4))*17);
+			//printf("params = %d\n", params);
+
+			//reg_write(PARAMS_ADDR, channel, params);
+			//reg_write(MODE_ADDR, channel, 0);
+			modeparams_write(channel, 0, pwm_offset_default, slope_default, slope_default);
+		}
 	}
 
 	if (tune == 0) {
-		reg_write(AMP_ADDR, 0, 63);
-		reg_write(MODE_ADDR, 0, 5*DETUNE_ON);
-	}
-	if (tune == 1) {
+		amp_write(0, 63);
+		mode_write(0, 5*DETUNE_ON);
+	} else if (tune == 1) {
 		//top->tri_offset = (1 << (BITS-1-2)) - (1 << (BITS-2));
 		top->tri_offset = -(1 << (BITS-2));
 
@@ -173,19 +258,41 @@ int main(int argc, char** argv) {
 			int detune_exp = 5*DETUNE_ON; //(5 - (note>>4))*DETUNE_ON;
 			int slope_exp0 = channel*2;
 			int slope_exp1 = channel + 3;
-			reg_write(MODE_ADDR, channel, detune_exp | (slope_exp0 << 4) | (slope_exp1 << 8));
+
+			//reg_write(MODE_ADDR, channel, detune_exp | (slope_exp0 << 4) | (slope_exp1 << 8));
+			modeparams_write(channel, detune_exp, pwm_offset_default, (slope_exp0 << 4) | (slope_default&15), (slope_exp1 << 4) | (slope_default&15));
 		}
-	}
-	if (tune == 2) {
+	} else if (tune == 2) {
 		// Try to preserve the noise
 		top->tri_offset = -(1 << (BITS-2));
 		top->slope_exp = 0;
 		top->slope_offset = 0;
 
-		reg_write(AMP_ADDR, 0, 63);
-		reg_write(MODE_ADDR, 0, 1 << MODE_BIT_NOISE);
+		amp_write(0, 63);
+		mode_write(0, 0, true);
 		period_write(0, 1, 0);
+	} else if (tune == 3 || tune == 4) {
+		amp_write(0, 63);
+		period_write(0, 0);
+		//if (tune == 4) reg_write(SWEEP_ADDR, 0, 16 | 1);
+		//if (tune == 4) reg_write(SWEEP_ADDR, 0, 2);
+	} else if (tune == 5 || tune == 6 || tune == 9) {
+		amp_write(0, 63);
+		if (tune == 9) period_write(0, 7, 1023); // lowest note
+		else period_write(0, 3, note_mantissas[0]); // C4
+	} else if (tune == 7 || tune == 8) {
+		amp_write(0, 63);
+		period_write(0, 4, 0); // B3
+/*
+		int pwm_offset = 0;
+		slope0 = 0;
+		slope1 = 255;
+		int detune_exp = 4*DETUNE_ON;
+
+		modeparams_write(0, detune_exp, pwm_offset, slope0, slope1);
+*/
 	}
+
 
 
 // Main loop
@@ -198,6 +305,9 @@ int main(int argc, char** argv) {
 	int prev_sample = sample;
 	int prev_pwm_acc = -1;
 	int sample_print_counter = 0;
+
+	int next_sweep_update_time = 0;
+	int sweep_rate = fastest_sweep;
 
 	bool run = true;
 	for (int i = 0; i < num_samples; i++) {
@@ -239,7 +349,7 @@ int main(int argc, char** argv) {
 				if (sample_print_counter > 25) run = false;
 			}
 */
-			int pwm_adj = pwm_acc - pwm_offset;
+			int pwm_adj = pwm_acc - pwm_out_offset;
 			if (i > 0 && pwm_acc > 0 && pwm_adj*16 != sample) {
 				printf("(%d, %d): sample = %d, pwm_adj = %d\n", i, subsample, sample, pwm_adj);
 				run = false;
@@ -251,11 +361,13 @@ int main(int argc, char** argv) {
 			sample = top->out_acc_out - (output_offset << 4);
 			if (sample >= (1 << (BITS - 1))) sample -= (1 << BITS);
 			//printf("%d ", sample);
+			//if (subsample == 0 && i > ((1<<15) - 256)) printf("%d ", sample); //!!!!
 
 #ifdef DOWNSAMPLE
 			for (int j = 0; j < FILTER_OUT_TAPS; j++) accs[j] += sample * (1.0f * FILTER_OUT_TAPS / (1 << BITS)) * filter_kernel[j*FILTER_DOWNSAMPLING + (subsample << (LOG2_FILTER_DOWNSAMPLING - LOG2_DOWNSAMPLING))];
 #endif
 		}
+		//if (i > (1<<15)) break; //!!!!
 
 #ifdef SAVE_AUDIO
 #ifdef DOWNSAMPLE
@@ -281,17 +393,83 @@ int main(int argc, char** argv) {
 
 				for (int channel = 0; channel < 1; channel++) {
 	//			for (int channel = 0; channel < 2; channel++) {
-					reg_write(PERIOD_ADDR, channel, (octave << MANTISSA_BITS) | mantissa);
+					period_write(channel, octave, mantissa);
 					mantissa += 1;
 				}
 			}
 		} else if (tune == 1) {
 			int amp = (i >> (LOG2_SAMPLES_PER_NOTE - 6)) & 63;
 			int channel = i >> LOG2_SAMPLES_PER_NOTE;
-			reg_write(AMP_ADDR, channel, amp);
+			amp_write(channel, amp);
 		} else if (tune == 2) {
 			int period = (i >> (2+LOG2_SAMPLES_PER_NOTE - 13));
 			period_write(0, period);
+		} else if (tune == 3) {
+			int period = (i >> (2+LOG2_SAMPLES_PER_NOTE - 13));
+			//int period = (i<<1) & 8191;
+			period_write(0, period);
+		} else if (tune == 4) {
+			int t = i << LOG2_DOWNSAMPLING;
+
+			int sign = i >= (num_samples >> 1);
+			if (i == num_samples >> 1) { // Restart with opposite sign
+				sweep_rate = fastest_sweep;
+				next_sweep_update_time = t;
+			}
+
+			if (t >= next_sweep_update_time) {
+				period_write(0, 0);
+				//reg_write(SWEEP_ADDR, 0, encode_sweep_rate(sweep_rate) | (sign ? 16 : 0));
+				sweep_period_amp_write(0, sweep_rate, sign);
+				next_sweep_update_time += 16384 << sweep_rate;
+				sweep_rate += 1;
+			}
+		} else if (tune == 5 || tune == 6 || tune == 9) {
+			int sweep_rate = 15 - ((i >> (2+LOG2_SAMPLES_PER_NOTE - 4)));
+			int amp_target = ((i >> (2+LOG2_SAMPLES_PER_NOTE - 5)))&1;
+			amp_target = amp_target ? 6 : 1;
+			int amp_sweep_rate = 0;
+
+			if (tune == 6 || tune == 9) {
+				// Match the sweep rate so that period and amplitude sweep at the same rate
+				amp_sweep_rate = sweep_rate + 7;
+				if (amp_sweep_rate > 15) amp_sweep_rate = 15;
+			}
+
+			//reg_write(SWEEP_ADDR, 0, (encode_sweep_rate(sweep_rate) | 16) | ((amp_sweep_rate|(amp_target << 4)) << 5));
+			sweep_period_amp_write(0, sweep_rate, 1, amp_sweep_rate, amp_target);
+		} else if (tune == 7 || tune == 8) {
+			int detune_exp = 4*DETUNE_ON;
+			int shr0 = (2+LOG2_SAMPLES_PER_NOTE);
+			int t = i >> (shr0 - 9);
+			bool first = (i & ((1 << (shr0-1)) - 1)) == 0;
+			if (t < 256) {
+				if (tune == 7 || first) {
+					int slope = 255 - t;
+					int pwm_offset = 0;
+					int slope0 = slope;
+					int slope1 = 0;
+					modeparams_write(0, detune_exp, pwm_offset, slope0, slope1);
+				}
+				if (tune == 8 && first) {
+					printf("first: i = %d\n", i);
+					int slope_sweep_rate = 2+LOG2_SAMPLES_PER_NOTE-1+4-8 - 1;
+					sweep_pwmoffs_slope_write(0, 0, 0, slope_sweep_rate, 1, 0);
+				}
+			} else {
+				if (tune == 7 || first) {
+					int slope = 128;
+					int pwm_offset = t&255;
+					int slope0 = slope;
+					int slope1 = slope;
+					modeparams_write(0, detune_exp, pwm_offset, slope0, slope1);
+				}
+				if (tune == 8 && first) {
+					printf("first: i = %d\n", i);
+					int pwmoffs_sweep_rate = 2+LOG2_SAMPLES_PER_NOTE-1+4-8-1 - 1;
+					sweep_pwmoffs_slope_write(0, pwmoffs_sweep_rate, 0);
+				}
+			}
 		}
 	}
 
