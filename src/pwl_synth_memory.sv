@@ -18,7 +18,12 @@ module pwls_shared_data #(parameter BITS=16) (
 	wire [BITS-1:0] data_in = reset ? '0 : in;
 	generate
 		for (i = 0; i < BITS; i++) begin
+`ifdef SCL_sky130_fd_sc_hd
 			sky130_fd_sc_hd__dlxtn_1 n_latch(.GATE_N(clk), .D(data_in[i]), .Q(out[i]));
+`endif
+`ifdef SCL_sg13g2_stdcell
+			sg13g2_dllrq_1 n_latch(.GATE_N(clk), .D(data_in[i]), .RESET_B(1), .Q(out[i]));
+`endif
 		end
 	endgenerate
 endmodule : pwls_shared_data
@@ -32,11 +37,21 @@ module pwls_register #(parameter BITS=16) (
 	genvar i;
 
 	wire gclk;
+`ifdef SCL_sky130_fd_sc_hd
 	sky130_fd_sc_hd__dlclkp_1 clock_gate(.CLK(clk), .GATE(we || reset), .GCLK(gclk));
+`endif
+`ifdef SCL_sg13g2_stdcell
+	sg13g2_lgcp_1 clock_gate(.CLK(clk), .GATE(we || reset), .GCLK(gclk));
+`endif
 
 	generate
 		for (i = 0; i < BITS; i++) begin
+`ifdef SCL_sky130_fd_sc_hd
 			sky130_fd_sc_hd__dlxtp_1 p_latch(.GATE(gclk), .D(wdata[i]), .Q(rdata[i]));
+`endif
+`ifdef SCL_sg13g2_stdcell
+			sg13g2_dlhq_1 p_latch(.GATE(gclk), .D(wdata[i]), .Q(rdata[i]));
+`endif
 		end
 	endgenerate
 endmodule
