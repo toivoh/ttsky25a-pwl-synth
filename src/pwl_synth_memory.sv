@@ -16,13 +16,23 @@ module pwls_shared_data #(parameter BITS=16) (
 	genvar i;
 
 	wire [BITS-1:0] data_in = reset ? '0 : in;
+	wire [BITS-1:0] latch_out;
 	generate
 		for (i = 0; i < BITS; i++) begin
 `ifdef SCL_sky130_fd_sc_hd
-			sky130_fd_sc_hd__dlxtn_1 n_latch(.GATE_N(clk), .D(data_in[i]), .Q(out[i]));
+			//sky130_fd_sc_hd__dlxtn_1 n_latch(.GATE_N(clk), .D(data_in[i]), .Q(out[i]));
+			sky130_fd_sc_hd__dlxtn_1 n_latch(.GATE_N(clk), .D(data_in[i]), .Q(latch_out[i]));
+	`ifdef USE_EXTRA_DELAY_BUFFERS
+			wire d1;
+			sky130_fd_sc_hd__dlygate4sd3_1 hold_buf1(.A(latch_out[i]), .X(d1));
+			sky130_fd_sc_hd__dlygate4sd3_1 hold_buf2(.A(d1), .X(out[i]));
+	`else
+			assign out[i] = latch_out[i];
+	`endif
 `endif
 `ifdef SCL_sg13g2_stdcell
-			sg13g2_dllrq_1 n_latch(.GATE_N(clk), .D(data_in[i]), .RESET_B(1), .Q(out[i]));
+			sg13g2_dllrq_1 n_latch(.GATE_N(clk), .D(data_in[i]), .RESET_B(1), .Q(latch_out[i]));
+			assign out[i] = latch_out[i];
 `endif
 		end
 	endgenerate

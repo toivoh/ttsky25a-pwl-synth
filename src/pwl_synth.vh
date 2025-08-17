@@ -108,4 +108,12 @@
 `ifndef PURE_RTL
 //`define NAMED_BUF_EN
 `define USE_LATCHES
+`define USE_EXTRA_DELAY_BUFFERS
+`endif
+
+
+`ifndef PURE_RTL
+`ifndef SCL_sg13g2_stdcell
+`define SCL_sky130_fd_sc_hd
+`endif
 `endif
