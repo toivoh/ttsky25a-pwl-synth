@@ -8,9 +8,15 @@
 `define USE_NEW_REGMAP_B // only takes effect if USE_NEW_REGMAP is enabled
 `endif
 
+`define USE_PHASE_LATCHES
+//`define USE_NEW_READ
+
 `define USE_SLOPE_EXP_REGS
 `define USE_PARAMS_REGS
 `define USE_SWEEP_REGS
+
+// Only used for verilator tests
+//// `define USE_TEST_INTERFACE
 
 `ifdef USE_NEW_REGMAP
 	`define CHANNEL_MODE_BITS 4
@@ -30,6 +36,12 @@
 		`define CHANNEL_MODE_BITS 4
 	`endif
 	`define REG_BITS 16
+`endif
+
+`ifdef USE_PHASE_LATCHES
+	`define REG_ADDR_BITS 6
+`else
+	`define REG_ADDR_BITS 5
 `endif
 
 // 0-2: detune_exp
@@ -92,6 +104,16 @@
 `define SWEEP_INDEX_SLOPE0 2 // must be even
 `define SWEEP_INDEX_SLOPE1 3 // must be odd, should probably be SWEEP_INDEX_SLOPE0+1
 `define SWEEP_INDEX_PWM_OFFSET 4
+
+
+// For test interface
+`define TST_ADDR_NOTHING -1
+`define TST_ADDR_ACC 0
+`define TST_ADDR_OUT_ACC 1
+`define TST_ADDR_PRED 2
+`define TST_ADDR_PART 3
+`define TST_ADDR_LFSR_EXTRA_BITS 4
+`define TST_ADDR_OCT_COUNTER 5
 
 
 

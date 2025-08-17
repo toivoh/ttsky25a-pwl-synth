@@ -20,7 +20,6 @@ module pwls_shared_data #(parameter BITS=16) (
 	generate
 		for (i = 0; i < BITS; i++) begin
 `ifdef SCL_sky130_fd_sc_hd
-			//sky130_fd_sc_hd__dlxtn_1 n_latch(.GATE_N(clk), .D(data_in[i]), .Q(out[i]));
 			sky130_fd_sc_hd__dlxtn_1 n_latch(.GATE_N(clk), .D(data_in[i]), .Q(latch_out[i]));
 	`ifdef USE_EXTRA_DELAY_BUFFERS
 			wire d1;
