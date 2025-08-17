@@ -1,0 +1,117 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Fri Aug 15 05:23:27 2025
+[*]
+[dumpfile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_mc.vcd"
+[dumpfile_mtime] "Fri Aug 15 05:09:17 2025"
+[dumpfile_size] 7082046
+[savefile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_mc3.gtkw"
+[timestart] 1318000
+[size] 3840 2041
+[pos] -1 -1
+*-19.000000 4240000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb_mc.
+[treeopen] tb_mc.mc_alu_unit.
+[treeopen] tb_mc.mc_alu_unit.alu_unit.
+[treeopen] tb_mc.mc_alu_unit.alu_unit.alu.
+[sst_width] 297
+[signals_width] 323
+[sst_expanded] 1
+[sst_vpaned_height] 653
+@28
+tb_mc.rst_n
+tb_mc.clk
+@200
+-
+@28
+tb_mc.mc_alu_unit.extra_term
+tb_mc.mc_alu_unit.alu_en
+@22
+tb_mc.mc_alu_unit.term_index[3:0]
+@28
+tb_mc.mc_alu_unit.state[2:0]
+tb_mc.mc_alu_unit.next_term
+tb_mc.mc_alu_unit.next_sample
+@22
+tb_mc.mc_alu_unit.alu_unit.oct_counter[23:0]
+@200
+-
+@22
+tb_mc.mc_alu_unit.alu_unit.phase_external[11:0]
+@200
+-
+@22
+tb_mc.mc_alu_unit.alu_unit.acc[12:0]
+tb_mc.mc_alu_unit.alu_unit.out_acc[11:0]
+@28
+tb_mc.mc_alu_unit.alu_unit.pred
+tb_mc.mc_alu_unit.alu_unit.part
+@200
+-
+@28
+tb_mc.mc_alu_unit.alu_unit.inv_src1
+tb_mc.mc_alu_unit.alu_unit.inv_src2
+@200
+-
+@22
+tb_mc.mc_alu_unit.alu_unit.alu.src2_in[15:0]
+tb_mc.mc_alu_unit.alu_unit.alu.src2_lshift[3:0]
+@200
+-
+@28
+tb_mc.mc_alu_unit.alu_unit.alu.src2_rot
+@22
+tb_mc.mc_alu_unit.alu_unit.alu.src2_in[15:0]
+tb_mc.mc_alu_unit.alu_unit.alu.src2_shifter.shl_count[3:0]
+@200
+-
+@22
+tb_mc.mc_alu_unit.alu_unit.alu.sum[12:0]
+tb_mc.mc_alu_unit.alu_unit.result[12:0]
+@200
+-
+@22
+tb_mc.mc_alu_unit.alu_unit.oct_counter[23:0]
+@200
+-
+@28
+tb_mc.mc_alu_unit.pwm_out
+@22
+tb_mc.mc_alu_unit.pwm_counter[6:0]
+@28
+tb_mc.mc_alu_unit.sample_out_acc
+tb_mc.mc_alu_unit.new_out_acc
+@200
+-
+@28
+tb_mc.mc_alu_unit.curr_channel[1:0]
+@22
+tb_mc.mc_alu_unit.curr_period[12:0]
+@200
+-
+@28
+tb_mc.reg_we
+@22
+tb_mc.mc_alu_unit.reg_wdata2[15:0]
+tb_mc.period0[12:0]
+tb_mc.period1[12:0]
+@28
+tb_mc.mc_alu_unit.alu_unit.oct_enable
+@200
+-
+@22
+tb_mc.mc_alu_unit.out_acc_out[11:0]
+@28
+tb_mc.mc_alu_unit.pwm_out
+@200
+-
+@22
+tb_mc.phase0[11:0]
+@29
+tb_mc.mc_alu_unit.reg_we_internal
+@22
+tb_mc.phase1[11:0]
+tb_mc.phase2[11:0]
+tb_mc.phase3[11:0]
+[pattern_trace] 1
+[pattern_trace] 0

@@ -164,6 +164,7 @@ async def test_project(dut):
 
 	# Restore the amp registers to zero
 	for i in range(4): await reg_write(tqv, 4+i, 0)
+	await ClockCycles(dut.clk, 64) # wait for amps to take effect
 
 	# Check that the PWM output samples are back at the zero level
 	for i in range(10):

@@ -1,0 +1,58 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Sun Aug 17 08:48:28 2025
+[*]
+[dumpfile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_peripheral.vcd"
+[dumpfile_mtime] "Sun Aug 17 08:47:25 2025"
+[dumpfile_size] 37596
+[savefile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_peripheral.gtkw"
+[timestart] 0
+[size] 1467 837
+[pos] -1 -1
+*-19.000000 956000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb_peripheral.
+[treeopen] tb_peripheral.peripheral.
+[treeopen] tb_peripheral.peripheral.mc_alu_unit.
+[sst_width] 297
+[signals_width] 158
+[sst_expanded] 1
+[sst_vpaned_height] 240
+@28
+tb_peripheral.rst_n
+tb_peripheral.clk
+@200
+-
+@22
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.acc[12:0]
+@28
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.pred
+@29
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.part
+@200
+-
+@28
+tb_peripheral.data_read
+tb_peripheral.data_write
+@22
+tb_peripheral.address[5:0]
+tb_peripheral.data_in[31:0]
+@28
+tb_peripheral.peripheral.en
+@200
+-
+@22
+tb_peripheral.peripheral.mc_alu_unit.term_index[3:0]
+@28
+tb_peripheral.peripheral.mc_alu_unit.state[2:0]
+@200
+-
+@28
+tb_peripheral.peripheral.mc_alu_unit.en_eff
+tb_peripheral.peripheral.mc_alu_unit.reg_we
+tb_peripheral.peripheral.mc_alu_unit.reg_we_internal
+@200
+-
+@22
+tb_peripheral.pwm_offset0[7:0]
+[pattern_trace] 1
+[pattern_trace] 0
