@@ -156,6 +156,10 @@ async def test_project(dut):
 		elif dir  < 0: assert data_out  < expected
 		elif dir  > 0: assert data_out  > expected
 
+	# restore sweeps to zero
+	for (i, sweep) in enumerate(sweeps):
+		await reg_write(tqv, 24+i, 0)
+
 	dut._log.info("Check PWM output when all amplitudes are zero")
 
 	# Restore the amp registers to zero
