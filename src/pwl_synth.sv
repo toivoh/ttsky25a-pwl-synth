@@ -193,8 +193,10 @@ module pwls_ALU #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BITS=4, OUT_RSHIFT=3
 	endgenerate
 	wire [BITS-1-1:0] shl_sat_mask = ~rev_shl_mask >> (15 - (BITS-2));
 
+	wire do_sat_shl_minus_corner = BITS == 12 ? (src2_lshift[3:2] == '1) : (src2_lshift >= BITS);
+
 	wire do_sat_shl_plus  = (src2_in[BITS-1] == 0) && |( src2_in & shl_sat_mask);
-	wire do_sat_shl_minus = (src2_in[BITS-1] == 1) && |(~src2_in & shl_sat_mask);
+	wire do_sat_shl_minus = (src2_in[BITS-1] == 1) && (|(~src2_in & shl_sat_mask) | do_sat_shl_minus_corner);
 	wire do_sat_shl = do_sat_shl_plus || do_sat_shl_minus;
 	wire sat_shl_sign = src2_in[BITS-1];
 
