@@ -15,8 +15,8 @@ async def reg_write(dut, addr, channel, value):
 	dut.en.value = 1
 
 
-@cocotb.test()
-async def test_project(dut):
+#@cocotb.test()
+async def test_project_old(dut):
 	dut._log.info("Start")
 
 	mc_alu_unit = dut.mc_alu_unit
@@ -102,3 +102,40 @@ async def test_project(dut):
 
 
 	await ClockCycles(dut.clk, 1 + PIPELINE + 256*32)
+
+
+@cocotb.test()
+async def test_period_sweep(dut):
+	dut._log.info("Start")
+
+	mc_alu_unit = dut.mc_alu_unit
+	alu_unit = mc_alu_unit.alu_unit
+
+	BITS = int(dut.BITS.value)
+	PHASE_BITS = BITS
+	NUM_STATES = int(alu_unit.STATE_LAST.value) + 1
+	PIPELINE = int(alu_unit.PIPELINE.value)
+
+	clock = Clock(dut.clk, 100, units="ns")
+	cocotb.start_soon(clock.start())
+
+#	dut.detune_exp.value = 7
+	dut.tri_offset.value = (1 << (BITS-1-2)) - (1 << (BITS-2))
+	dut.slope_exp.value = 2
+	dut.slope_offset.value = 1 << (BITS - 4) # full range is 0 to 2^(BITS-3)-1
+	#dut.amp.value = 3 << (BITS - 4) # full range is 0 to 2^(BITS-2)-1
+
+	dut.en.value = 1
+	dut.next_en.value = 1
+
+
+	dut.rst_n.value = 0
+	await ClockCycles(dut.clk, 10)
+	dut.rst_n.value = 1
+
+
+	await reg_write(dut, 0, 0, (1 << 12) - 2) # Set period for channel 0
+	await reg_write(dut, 6, 0, (1 << 8)) # Set period sweep for channel 0
+
+
+	await ClockCycles(dut.clk, 64*8*4)

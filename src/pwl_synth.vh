@@ -15,11 +15,15 @@
 `define USE_PARAMS_REGS
 `define USE_SWEEP_REGS
 
+`define USE_3X_FLAG
+`define USE_X2N_FLAGS
+
 // Only used for verilator tests
 //// `define USE_TEST_INTERFACE
 
 `ifdef USE_NEW_REGMAP
-	`define CHANNEL_MODE_BITS 4
+//	`define CHANNEL_MODE_BITS 4
+	`define CHANNEL_MODE_BITS 7
 	`ifdef USE_NEW_REGMAP_B
 		`define REGS_PER_CHANNEL 8
 		`define REG_BITS 16 // Could be 13? If the registers don't grow too much
@@ -46,7 +50,10 @@
 
 // 0-2: detune_exp
 `define CHANNEL_MODE_BIT_NOISE 3
-// 4-7, 8-11: slope_exp
+//// 4-7, 8-11: slope_exp
+`define CHANNEL_MODE_BIT_3X 4
+`define CHANNEL_MODE_BIT_X2N0 5
+`define CHANNEL_MODE_BIT_X2N1 6
 
 
 `define DIVIDER_BITS 24
@@ -91,7 +98,8 @@
 
 
 `define PART_SEL_BITS 2
-`define PART_SEL_ACC_MSB 0
+//`define PART_SEL_ACC_MSB 0
+`define PART_SEL_SRC2_PRE_SIGN 0
 `define PART_SEL_SWEEP   1
 `define PART_SEL_NEQ     2
 `define PART_SEL_NOSAT   3

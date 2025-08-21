@@ -68,7 +68,7 @@ async def test_project(dut):
 
 	dut._log.info("Test project behavior: PWL Synth")
 
-	nbits = [13, 6, 8, 8, 8, 4]
+	nbits = [13, 6, 8, 8, 8, 7]
 
 
 	dut._log.info("Check initial PWM output")

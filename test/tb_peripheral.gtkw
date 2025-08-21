@@ -1,22 +1,23 @@
 [*]
 [*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Sun Aug 17 08:48:28 2025
+[*] Sun Aug 17 12:51:01 2025
 [*]
 [dumpfile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_peripheral.vcd"
-[dumpfile_mtime] "Sun Aug 17 08:47:25 2025"
-[dumpfile_size] 37596
+[dumpfile_mtime] "Sun Aug 17 12:50:19 2025"
+[dumpfile_size] 38486
 [savefile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_peripheral.gtkw"
 [timestart] 0
-[size] 1467 837
+[size] 1467 1025
 [pos] -1 -1
-*-19.000000 956000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-19.000000 1140000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb_peripheral.
 [treeopen] tb_peripheral.peripheral.
 [treeopen] tb_peripheral.peripheral.mc_alu_unit.
+[treeopen] tb_peripheral.peripheral.mc_alu_unit.alu_unit.
 [sst_width] 297
-[signals_width] 158
+[signals_width] 243
 [sst_expanded] 1
-[sst_vpaned_height] 240
+[sst_vpaned_height] 306
 @28
 tb_peripheral.rst_n
 tb_peripheral.clk
@@ -24,9 +25,9 @@ tb_peripheral.clk
 -
 @22
 tb_peripheral.peripheral.mc_alu_unit.alu_unit.acc[12:0]
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.out_acc[11:0]
 @28
 tb_peripheral.peripheral.mc_alu_unit.alu_unit.pred
-@29
 tb_peripheral.peripheral.mc_alu_unit.alu_unit.part
 @200
 -
@@ -54,5 +55,26 @@ tb_peripheral.peripheral.mc_alu_unit.reg_we_internal
 -
 @22
 tb_peripheral.pwm_offset0[7:0]
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.amp_external[9:0]
+@200
+-
+@28
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.replace_src2_with_amp
+@200
+-
+@22
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.alu.src1_in[12:0]
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.alu.src1[12:0]
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.alu.src2_in[15:0]
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.alu.src2[12:0]
+@200
+-
+-alu_unit
+@22
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.src1[12:0]
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.src1_in0[12:0]
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.src1_in[12:0]
+@29
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.mask_out_acc_top
 [pattern_trace] 1
 [pattern_trace] 0
