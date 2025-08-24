@@ -19,6 +19,7 @@
 `define USE_X2N_FLAGS
 `define USE_COMMON_SAT
 `define USE_PWL_OSC
+`define USE_ORION_WAVE
 
 // Only used for verilator tests
 //// `define USE_TEST_INTERFACE
@@ -67,11 +68,22 @@
 `define CHANNEL_MODE_BIT_PWL_OSC 8
 
 
+`define WF_BITS 2
+`define WF_OSC     0
+`define WF_NOISE   1
+`define WF_PWL_OSC 2
+`define WF_ORION   3
+
+
 `define DIVIDER_BITS 24
 `define SWEEP_DIR_BITS 3
 
 
+`ifdef USE_ORION_WAVE
+`define SRC1_SEL_BITS 4
+`else
 `define SRC1_SEL_BITS 3
+`endif
 `define SRC1_SEL_MANTISSA     3'd0
 `define SRC1_SEL_AMP          3'd1
 `define SRC1_SEL_SLOPE_OFFSET 3'd2
@@ -80,6 +92,9 @@
 `define SRC1_SEL_PHASE        3'd5
 `define SRC1_SEL_OUT_ACC      3'd6
 `define SRC1_SEL_AMP_TARGET   3'd7
+`ifdef USE_ORION_WAVE
+`define SRC1_SEL_ACC          4'd8
+`endif
 
 `define SRC2_SEL_BITS 3
 `define SRC2_SEL_ACC          3'd0
@@ -88,6 +103,9 @@
 `define SRC2_SEL_DETUNE       3'd3
 `define SRC2_SEL_PHASE_MODIFIED 3'd4
 `define SRC2_SEL_ZERO         3'd5
+`ifdef USE_ORION_WAVE
+`define SRC2_SEL_BITSHUFFLE_ACC 3'd6
+`endif
 
 `define DEST_SEL_BITS 2
 `define DEST_SEL_PHASE   2'd0
@@ -122,6 +140,7 @@
 `define PART_SEL_NEQ     2
 `define PART_SEL_NOSAT   3
 `define PART_SEL_READ    4 // only used if USE_NEW_READ
+`define PART_SEL_ZERO    5 // only used if USE_ORION_WAVE
 
 
 // synced with SRC1_SEL_*** and register address bits

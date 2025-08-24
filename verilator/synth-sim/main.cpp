@@ -44,7 +44,8 @@ const int log2_downsampling = 4;
 // 11: phase multipliers: (3, 2^n)
 // 12: phase multipliers: (1, 2^n)
 // 13: common_sat
-const int tune = 14;
+// 15: orion pedal
+const int tune = 15;
 
 
 const int fastest_sweep = 2;
@@ -74,10 +75,11 @@ const int MODE_BIT_DETUNE0 = 0;
 const int MODE_BIT_NOISE = 3;
 const int MODE_FLAG_NOISE = 1 << MODE_BIT_NOISE;
 const int MODE_FLAG_3X = 16;
-const int CHANNEL_MODE_BIT_X2N0 = 5;
-const int CHANNEL_MODE_BIT_X2N1 = 6;
+const int MODE_BIT_X2N0 = 5;
+const int MODE_BIT_X2N1 = 6;
 const int MODE_FLAG_COMMON_SAT = 128;
 const int MODE_FLAG_PWL_OSC = 256;
+const int MODE_FLAGS_ORION = MODE_FLAG_NOISE | MODE_FLAG_PWL_OSC;
 
 
 
@@ -274,7 +276,7 @@ int main(int argc, char** argv) {
 			amp_write(channel, 0); // Silence all channels
 			//mode_write(channel, 6);
 
-			if (tune != 11 && tune != 13 && tune != 14) {
+			if (tune != 11 && tune != 13 && tune != 14 && tune != 15) {
 				//int tri_offset = (1 << (BITS-1-2)) - (1 << (BITS-2));
 				//int tri_offset = (1 << (BITS-2-2)) - (1 << (BITS-2));
 				int params = (((tri_offset >> (BITS-2-8))&255)<<8) | ((slope_offset >> (BITS-3-4))*17);
@@ -350,8 +352,13 @@ int main(int argc, char** argv) {
 			int slope_sweep_rate = 2+LOG2_SAMPLES_PER_NOTE-1+4-8 + 1;
 			sweep_pwmoffs_slope_write(0, 0, 0, slope_sweep_rate, 1, 1); // sweep down slope0
 		}
+	} else if (tune == 15) {
+		amp_write(0, 63);
+		period_write(0, 4, note_mantissas[0]); // C4
+		int detune_exp = 0;
+		//int detune_exp = 4;
+		mode_write(0, detune_exp, MODE_FLAGS_ORION);
 	}
-
 
 // Main loop
 // =========
@@ -536,6 +543,19 @@ int main(int argc, char** argv) {
 				if (tune == 11) mode_write(0, 5, 0, 1 | (t<<1));
 				else if (tune == 12) mode_write(0, 4 + (t>0), 0, 0 | (t<<1));
 			}
+		} else if (tune == 15) {
+			int shr0 = 1+LOG2_SAMPLES_PER_NOTE - 16;
+			int t = i >> shr0;
+			if (t >= (3<<15)) t &= ~0x4000;
+
+			int offset = 0;
+			offset += ((t >> 13)&1) << 8;
+			offset += ((t >> 14)&1) << 7;
+			offset += ((t >> 12)&1) << 5;
+			offset += ((t >> 15)&1) << 2;
+			offset += ((t >>  9)&1) << 0;
+			int slope = offset >> 5;
+			reg_write(SLOPE0_ADDR, 0, slope);
 		}
 	}
 

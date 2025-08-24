@@ -194,6 +194,24 @@ module named_buffer #(parameter BITS=1) (
 endmodule
 
 
+module pwls_wf_decoder(
+		input wire [`CHANNEL_MODE_BITS-1:0] channel_mode,
+		output wire [`WF_BITS-1:0] waveform,
+		output wire lfsr_en, pwl_osc_en, orion_en
+	);
+	assign waveform = {channel_mode[`CHANNEL_MODE_BIT_PWL_OSC], channel_mode[`CHANNEL_MODE_BIT_NOISE]};
+`ifdef USE_ORION_WAVE
+	assign lfsr_en    = (waveform == `WF_NOISE);
+	assign pwl_osc_en = (waveform == `WF_PWL_OSC);
+	assign orion_en   = (waveform == `WF_ORION);
+`else
+	assign lfsr_en = waveform[0];
+	assign pwl_osc_en = waveform[1];
+	assign orion_en = 0;
+`endif
+endmodule : pwls_wf_decoder
+
+
 module pwls_shifter(
 		input wire [15:0] shifter_in,
 		input wire [3:0] shl_count,
@@ -232,7 +250,7 @@ module pwls_ALU #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BITS=4, OUT_RSHIFT=3
 		input wire src2_sext, src2_sext_less,
 		input wire inv_src2_tri_en, // set inv_src2 = src2[BITS-1]
 		input wire inv_src1, inv_src2, src2_mask_msbs, carry_in,
-		input wire sat_en, ext_sat_en,
+		input wire sat_en, ext_sat_en, result_sext,
 
 		output wire signed [BITS_E-1:0] result,
 		output wire cmp_result, delayed, equal, src2_pre_sign
@@ -319,7 +337,14 @@ module pwls_ALU #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BITS=4, OUT_RSHIFT=3
 	wire signed [BITS-1:0] sat_sum = (sat_en && do_sat) ? (sat_sign ? -1 << (BITS - 2) : (1 << (BITS - 2)) - 1) : sum;
 
 	//assign result = sat_sum;
-	assign result = {sum[BITS_E-1:BITS], sat_sum}; // The top bits are not used with saturation for now
+	wire signed [BITS_E-1:0] result0 = {sum[BITS_E-1:BITS], sat_sum}; // The top bits are not used with saturation for now
+
+	reg signed [BITS_E-1:0] result1; // not a register
+	always_comb begin
+		result1 = result0;
+		if (result_sext) result1[BITS-1] = result1[BITS-2];
+	end
+	assign result = result1;
 
 	assign cmp_result = sum[BITS-1];
 	assign delayed = src2_shifted[BITS-REV_PHASE_SHR-1];
@@ -357,10 +382,14 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 		output wire [`PART_SEL_BITS-1:0] part_sel_out,
 		output wire [`DEST_SEL_BITS-1:0] dest_sel_out,
 		output wire replace_src2_with_amp_out,
-		output wire src2_sext_out, src2_sext_less_out, out_acc_frac_update_en_out, out_acc_frac_mask_out, inv_src2_tri_en_out,
+		output wire src2_sext_out, src2_sext_less_out, out_acc_frac_update_en_out, out_acc_frac_mask_out, inv_src2_tri_en_out, result_sext_out,
 		output wire reg_we_out,
 		output wire sweep_sign_out
 	);
+
+	wire [`WF_BITS-1:0] waveform;
+	wire lfsr_en, pwl_osc_en, orion_en;
+	pwls_wf_decoder wf_decoder(.channel_mode(channel_mode), .waveform(waveform), .lfsr_en(lfsr_en), .pwl_osc_en(pwl_osc_en), .orion_en(orion_en));
 
 	wire pre_en, main_en, post_en;
 `ifdef USE_TEST_INTERFACE
@@ -398,7 +427,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 	reg [`PRED_SEL_BITS-1:0] pred_sel;
 	reg [`PART_SEL_BITS-1:0] part_sel;
 	reg replace_src2_with_amp;
-	reg src2_sext, src2_sext_less, out_acc_frac_update_en, out_acc_frac_mask, inv_src2_tri_en;
+	reg src2_sext, src2_sext_less, out_acc_frac_update_en, out_acc_frac_mask, inv_src2_tri_en, result_sext;
 	reg reg_we_if_oct_en, reg_we_only_if_part;
 
 	always_comb begin
@@ -413,6 +442,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 		replace_src2_with_amp = 0;
 		src2_sext = 0;
 		src2_sext_less = 0;
+		result_sext = 0;
 		out_acc_frac_update_en = 1;
 		out_acc_frac_mask = 1;
 		inv_src2_tri_en = 0;
@@ -538,14 +568,14 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 				src2_sel = `SRC2_SEL_REV_PHASE;
 				sat_en = 0;
 				inv_src1 = 1; inv_src2 = 0; carry_in = 1;
-				src2_lshift = channel_mode[`CHANNEL_MODE_BIT_NOISE] ? 0 : osc_shift;
+				src2_lshift = lfsr_en ? 0 : osc_shift;
 				src2_mask_msbs = 1;
-				pred_we = 1;
-				pred_sel = channel_mode[`CHANNEL_MODE_BIT_NOISE] ? `PRED_SEL_LFSR : `PRED_SEL_OSC;
+				pred_we = 1; pred_sel = `PRED_SEL_OSC;
+				pred_sel = lfsr_en ? `PRED_SEL_LFSR : `PRED_SEL_OSC;
 				dest_sel = `DEST_SEL_NOTHING;
 
 `ifdef USE_PWL_OSC
-				if (channel_mode[`CHANNEL_MODE_BIT_PWL_OSC]) begin
+				if (pwl_osc_en) begin
 					src2_sel = `SRC2_SEL_PHASE_MODIFIED;
 					src2_lshift = 0;
 				end
@@ -565,7 +595,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 `endif
 			end
 			`STATE_UPDATE_PHASE: begin
-				if (channel_mode[`CHANNEL_MODE_BIT_NOISE]) begin
+				if (lfsr_en) begin
 					// Update of lfsr_extra_bits is matched with this update
 					if (pred) begin // small_step, just increase by one
 						src1_sel = `SRC1_SEL_PHASE;
@@ -633,6 +663,14 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 				part_we = main_en;
 				dest_sel = `DEST_SEL_ACC;
 
+`ifdef USE_ORION_WAVE
+				if (orion_en) begin
+					dest_sel = `DEST_SEL_NOTHING;
+					part_we = main_en;
+					part_sel = `PART_SEL_ZERO;
+				end
+`endif
+
 `ifdef USE_X2N_FLAGS
 				inv_src2_tri_en = 1;
 				ext_sat_en = 0;
@@ -678,6 +716,20 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 				src2_lshift = slope_exp;
 				pred_we = 1; pred_sel = `PRED_SEL_CMP;
 				dest_sel = `DEST_SEL_NOTHING;
+
+`ifdef USE_ORION_WAVE
+				if (orion_en) begin
+					// Orion wave step 1
+					src1_sel = `SRC1_SEL_SLOPE_OFFSET;
+					keep_exp_on_top = 1; // use all the slope[0] bits
+					src2_sel = `SRC2_SEL_BITSHUFFLE_ACC;
+					sat_en = 0;
+					inv_src1 = 0; inv_src2 = 0; carry_in = 0;
+					src2_lshift = 0; // TODO
+					//pred_we = 1; pred_sel = `PRED_SEL_CMP; // We don't care about the value of pred right now
+					dest_sel = `DEST_SEL_ACC;
+				end
+`endif
 			end
 			`STATE_COMBINED_SLOPE_ADD: begin
 				//src1_sel = pred ? `SRC1_SEL_ZERO : `SRC1_SEL_SLOPE_OFFSET; // TODO zero out later
@@ -690,6 +742,21 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 				src2_lshift = slope_exp;
 				src2_lshift_extra = pred;
 				dest_sel = `DEST_SEL_ACC;
+
+`ifdef USE_ORION_WAVE
+				if (orion_en) begin
+					src1_sel = `SRC1_SEL_ACC;
+					src1_en = 1;
+					src2_sel = `SRC2_SEL_ACC;
+					sat_en = 0;
+					inv_src1 = 0; inv_src2 = 0; carry_in = 0;
+					src2_lshift = 0;
+					src2_lshift_extra = 1;
+					result_sext = 1;
+					dest_sel = `DEST_SEL_ACC;
+				end
+`endif
+
 `ifdef USE_COMMON_SAT
 				out_acc_frac_update_en = 0;
 				if (common_sat && (sub_channel == 0)) dest_sel = `DEST_SEL_OUT_ACC;
@@ -816,6 +883,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 	named_buffer nb_replace_src2_with_amp(.in(replace_src2_with_amp), .out(replace_src2_with_amp_out));
 	named_buffer nb_src2_sext(.in(src2_sext), .out(src2_sext_out));
 	named_buffer nb_src2_sext_less(.in(src2_sext_less), .out(src2_sext_less_out));
+	named_buffer nb_result_sext(.in(result_sext), .out(result_sext_out));
 	named_buffer nb_out_acc_frac_update_en(.in(out_acc_frac_update_en), .out(out_acc_frac_update_en_out));
 	named_buffer nb_out_acc_frac_mask(.in(out_acc_frac_mask), .out(out_acc_frac_mask_out));
 	named_buffer nb_inv_src2_tri_en(.in(inv_src2_tri_en), .out(inv_src2_tri_en_out));
@@ -918,6 +986,11 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 `endif
 
 
+	wire [`WF_BITS-1:0] waveform;
+	wire lfsr_en, pwl_osc_en, orion_en;
+	pwls_wf_decoder wf_decoder(.channel_mode(channel_mode), .waveform(waveform), .lfsr_en(lfsr_en), .pwl_osc_en(pwl_osc_en), .orion_en(orion_en));
+
+
 	// Octave divider
 	// ==============
 	//localparam DIVIDER_BITS = 2**OCT_BITS - HIGH_OCTAVES;
@@ -935,14 +1008,14 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 
 	wire [2**OCT_BITS-1:0] oct_enables_lfsr = all_oct_enables[2**OCT_BITS-1+LFSR_HIGHEST_OCT -: 2**OCT_BITS];
 
-	wire oct_enable = channel_mode[`CHANNEL_MODE_BIT_NOISE] ? oct_enables_lfsr[octave] : oct_enables[octave];
+	wire oct_enable = lfsr_en ? oct_enables_lfsr[octave] : oct_enables[octave];
 */
 
 	// not registers
 	reg [3:0] oct_enable_index_offset;
 	reg force_oct_enable;
 	always_comb begin
-		if (channel_mode[`CHANNEL_MODE_BIT_NOISE]) begin
+		if (lfsr_en) begin
 			oct_enable_index_offset = LFSR_HIGHEST_OCT;
 			force_oct_enable = 0;
 		end else begin
@@ -1009,7 +1082,7 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 	wire [1:0] src2_forward_extra_bit;
 	wire pred_we, part_we, lfsr_extra_bits_we;
 	wire [`DEST_SEL_BITS-1:0] dest_sel;
-	wire replace_src2_with_amp, src2_sext, src2_sext_less, out_acc_frac_update_en, out_acc_frac_mask, inv_src2_tri_en;
+	wire replace_src2_with_amp, src2_sext, src2_sext_less, out_acc_frac_update_en, out_acc_frac_mask, inv_src2_tri_en, result_sext;
 	wire [`PRED_SEL_BITS-1:0] pred_sel;
 	wire [`PART_SEL_BITS-1:0] part_sel;
 	wire sweep_sign;
@@ -1068,7 +1141,8 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 		.pred_we_out(pred_we), .part_we_out(part_we), .lfsr_extra_bits_we_out(lfsr_extra_bits_we),
 		.dest_sel_out(dest_sel),
 		.pred_sel_out(pred_sel), .part_sel_out(part_sel),
-		.replace_src2_with_amp_out(replace_src2_with_amp), .src2_sext_out(src2_sext), .src2_sext_less_out(src2_sext_less), .out_acc_frac_update_en_out(out_acc_frac_update_en), .out_acc_frac_mask_out(out_acc_frac_mask),
+		.replace_src2_with_amp_out(replace_src2_with_amp), .src2_sext_out(src2_sext), .src2_sext_less_out(src2_sext_less),
+		.out_acc_frac_update_en_out(out_acc_frac_update_en), .out_acc_frac_mask_out(out_acc_frac_mask), .result_sext_out(result_sext),
 		.inv_src2_tri_en_out(inv_src2_tri_en), .reg_we_out(reg_we), .sweep_sign_out(sweep_sign)
 	);
 
@@ -1123,7 +1197,6 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 
 
 	wire [3:0] osc_shift_mask = (-2 << osc_shift);
-	wire pwl_osc_en = channel_mode[`CHANNEL_MODE_BIT_PWL_OSC];
 
 	reg [BITS-1-1:0] phase_modified; // not a register
 	always_comb begin
@@ -1135,6 +1208,25 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 		phase_modified[3:0] = phase_modified[3:0] | ((pwl_osc_en && phase_external[PHASE_BITS-1]) ? ((~osc_shift_mask)&{1'b1, osc_shift_mask[3:1]}) : 0);
 `endif
 	end
+
+`ifdef USE_ORION_WAVE
+	// "86de7c54f19203ba", ignore positions above 8, add 3 more phase bits
+	wire [BITS_E-1:0] bitshuffle_acc;
+	assign bitshuffle_acc[ 0] = 0;
+	assign bitshuffle_acc[ 1] = acc[ 4];
+	assign bitshuffle_acc[ 2] = 0;
+	assign bitshuffle_acc[ 3] = acc[ 7];
+	assign bitshuffle_acc[ 4] = acc[ 8];
+	assign bitshuffle_acc[ 5] = 0;
+	assign bitshuffle_acc[ 6] = acc[10];
+	assign bitshuffle_acc[ 7] = 0;
+	assign bitshuffle_acc[ 8] = 0;
+	assign bitshuffle_acc[ 9] = acc[ 9];
+	assign bitshuffle_acc[10] = acc[11];
+	assign bitshuffle_acc[11] = 0;
+	assign bitshuffle_acc[12] = 0;
+`endif
+
 
 	// Not registers
 	reg signed [BITS_E-1:0] src1;
@@ -1153,6 +1245,9 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 			*/
 
 			`SRC1_SEL_ZERO: src1 = 0;
+`ifdef USE_ORION_WAVE
+			`SRC1_SEL_ACC: src1 = acc;
+`endif
 			default: src1 = src1_external;
 		endcase
 		case (src2_sel)
@@ -1173,6 +1268,9 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 //			`SRC2_SEL_PHASE_MODIFIED: src2 = {{(16-BITS){1'bX}}, 1'b0, phase_external[BITS-1-1:1], lfsr_bit};
 			`SRC2_SEL_PHASE_MODIFIED: src2 = {{(16-BITS){1'bX}}, 1'b0, phase_modified};
 			`SRC2_SEL_ZERO: src2 = 0;
+`ifdef USE_ORION_WAVE
+			`SRC2_SEL_BITSHUFFLE_ACC: src2 = {{(16-BITS_E){1'b0}}, bitshuffle_acc};
+`endif
 			default: src2 = 'X;
 		endcase
 
@@ -1217,13 +1315,20 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 	//wire [BITS-1:0] src2_in = replace_src2_with_amp ? src1_external : src2_in0; // Feed in amp through src1_external in this case
 	wire [15:0] src2_in = replace_src2_with_amp ? amp_external : src2_in0;
 
-	wire equal, src2_pre_sign;
+	wire equal, src2_pre_sign, delayed_simple;
 	pwls_ALU #(.BITS(BITS), .BITS_E(BITS_E), .SHIFT_COUNT_BITS(SHIFT_COUNT_BITS), .OUT_RSHIFT(OUT_RSHIFT), .REV_PHASE_SHR(REV_PHASE_SHR), .AMP_BITS(AMP_BITS)) alu(
 		.clk(clk), .reset(reset),
-		.src1_in(src1_in), .src2_in(src2_in), .src2_rot(src2_rot), .src2_forward_extra_bit(src2_forward_extra_bit), .src2_lshift(src2_lshift + src2_lshift_extra), .src2_sext(src2_sext), .src2_sext_less(src2_sext_less), .inv_src2_tri_en(inv_src2_tri_en),
+		.src1_in(src1_in), .src2_in(src2_in), .src2_rot(src2_rot), .src2_forward_extra_bit(src2_forward_extra_bit), .src2_lshift(src2_lshift + src2_lshift_extra),
+		.src2_sext(src2_sext), .src2_sext_less(src2_sext_less), .inv_src2_tri_en(inv_src2_tri_en), .result_sext(result_sext),
 		.src2_mask_msbs(src2_mask_msbs), .inv_src1(inv_src1), .inv_src2(inv_src2), .carry_in(carry_in), .sat_en(sat_en), .ext_sat_en(ext_sat_en),
-		.result(result), .cmp_result(cmp_result), .delayed(delayed), .equal(equal), .src2_pre_sign(src2_pre_sign)
+		.result(result), .cmp_result(cmp_result), .delayed(delayed_simple), .equal(equal), .src2_pre_sign(src2_pre_sign)
 	);
+
+`ifdef USE_PWL_OSC
+	assign delayed = phase_external[osc_shift];
+`else
+	assign delayed = delayed_simple;
+`endif
 
 	// delayed is based on rev_phase, which is based on phase_external
 	wire pred_next_osc = cmp_result || delayed; // small_step
@@ -1258,6 +1363,9 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 			`PART_SEL_NOSAT: part_next = !sweep_sat;
 `ifdef USE_NEW_READ
 			`PART_SEL_READ: part_next = reg_read_index[0]; // to be able to read the right slope
+`endif
+`ifdef USE_ORION_WAVE
+			`PART_SEL_ZERO: part_next = 0;
 `endif
 			default: part_next = 'X;
 		endcase
