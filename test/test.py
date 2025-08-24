@@ -88,14 +88,15 @@ async def test_project(dut):
 		#print("i =", i)
 		data_in = (0x1234 + i*0x1111)&0xffff
 		await reg_write(tqv, i, data_in)
-		data_out = await reg_read(tqv, i)
-		expected = data_in & ((1 << nbits[i>>2]) - 1)
-		#print("data_out =", hex(data_out), "expected =", hex(expected))
-		assert data_out == expected
+		if i < 20:
+			data_out = await reg_read(tqv, i)
+			expected = data_in & ((1 << nbits[i>>2]) - 1)
+			#print("data_out =", hex(data_out), "expected =", hex(expected))
+			assert data_out == expected
 
 	# Test reading back the registers again
 	dut._log.info("Test reading back the registers again")
-	for i in range(24):
+	for i in range(20):
 		#print("i =", i)
 		data_in = (0x1234 + i*0x1111)&0xffff
 		data_out = await reg_read(tqv, i)

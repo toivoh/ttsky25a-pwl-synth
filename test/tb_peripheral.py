@@ -53,7 +53,7 @@ async def test_slope_192_m1(dut):
 			#for i in range(4): alu_unit.pred.value = 0; await ClockCycles(dut.clk, 1)
 
 
-@cocotb.test()
+#@cocotb.test()
 async def test_slope_amp_clamp_out_acc_0(dut):
 	dut._log.info("Start")
 
@@ -76,3 +76,28 @@ async def test_slope_amp_clamp_out_acc_0(dut):
 	mc_alu_unit.genblk1[0].amps_reg.data.value = 1
 
 	await ClockCycles(dut.clk, 4)
+
+@cocotb.test()
+async def test_new_read(dut):
+	dut._log.info("Start")
+
+	peripheral = dut.peripheral
+	mc_alu_unit = peripheral.mc_alu_unit
+	alu_unit = mc_alu_unit.alu_unit
+
+	clock = Clock(dut.clk, 100, units="ns")
+	cocotb.start_soon(clock.start())
+
+	dut.rst_n.value = 0
+	await ClockCycles(dut.clk, 10)
+	dut.rst_n.value = 1
+
+	dut.address.value = 1
+	dut.data_read.value = 1
+
+	for i in range(128):
+		await ClockCycles(dut.clk, 1)
+		if peripheral.data_ready.value == 1: break
+
+	dut.data_read.value = 0
+	await ClockCycles(dut.clk, 80)

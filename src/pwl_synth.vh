@@ -9,7 +9,7 @@
 `endif
 
 `define USE_PHASE_LATCHES
-//`define USE_NEW_READ
+`define USE_NEW_READ
 
 `define USE_SLOPE_EXP_REGS
 `define USE_PARAMS_REGS
@@ -17,13 +17,22 @@
 
 `define USE_3X_FLAG
 `define USE_X2N_FLAGS
+`define USE_COMMON_SAT
+`define USE_PWL_OSC
 
 // Only used for verilator tests
 //// `define USE_TEST_INTERFACE
 
+`ifndef USE_NEW_READ
+`define USE_OLD_READ // if defined, the old read is used either as primary or extra read mechanism
+`endif
+`ifdef USE_TEST_INTERFACE
+`define USE_OLD_READ
+`endif
+
 `ifdef USE_NEW_REGMAP
 //	`define CHANNEL_MODE_BITS 4
-	`define CHANNEL_MODE_BITS 7
+	`define CHANNEL_MODE_BITS 9
 	`ifdef USE_NEW_REGMAP_B
 		`define REGS_PER_CHANNEL 8
 		`define REG_BITS 16 // Could be 13? If the registers don't grow too much
@@ -54,6 +63,8 @@
 `define CHANNEL_MODE_BIT_3X 4
 `define CHANNEL_MODE_BIT_X2N0 5
 `define CHANNEL_MODE_BIT_X2N1 6
+`define CHANNEL_MODE_BIT_COMMON_SAT 7
+`define CHANNEL_MODE_BIT_PWL_OSC 8
 
 
 `define DIVIDER_BITS 24
@@ -97,12 +108,20 @@
 `define STATE_BITS ($clog2(`STATE_LAST + 1))
 
 
-`define PART_SEL_BITS 2
+`define PRED_SEL_BITS 2
+`define PRED_SEL_OSC  0
+`define PRED_SEL_LFSR 1
+`define PRED_SEL_CMP  2
+`define PRED_SEL_READ_VALID 3
+
+
+`define PART_SEL_BITS 3
 //`define PART_SEL_ACC_MSB 0
 `define PART_SEL_SRC2_PRE_SIGN 0
 `define PART_SEL_SWEEP   1
 `define PART_SEL_NEQ     2
 `define PART_SEL_NOSAT   3
+`define PART_SEL_READ    4 // only used if USE_NEW_READ
 
 
 // synced with SRC1_SEL_*** and register address bits
@@ -112,6 +131,9 @@
 `define SWEEP_INDEX_SLOPE0 2 // must be even
 `define SWEEP_INDEX_SLOPE1 3 // must be odd, should probably be SWEEP_INDEX_SLOPE0+1
 `define SWEEP_INDEX_PWM_OFFSET 4
+// Not used for sweeping, but for read-back
+`define SWEEP_INDEX_PHASE 5
+`define READ_INDEX_BITS 3
 
 
 // For test interface

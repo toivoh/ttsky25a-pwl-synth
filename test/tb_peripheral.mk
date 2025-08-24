@@ -8,6 +8,10 @@ SRC_DIR = $(PWD)/../src
 PROJECT_SOURCES = pwl_synth.sv pwl_synth_memory.sv
 ADDITIONAL_SOURCES =
 
+
+COMPILE_ARGS += -DUSE_NEW_READ
+
+
 ifneq ($(GATES),yes)
 
 # RTL simulation:

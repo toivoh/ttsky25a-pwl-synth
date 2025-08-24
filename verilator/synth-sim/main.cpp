@@ -11,9 +11,13 @@
 
 #include "Vpwls_multichannel_ALU_unit.h"
 #include "verilated.h"
+#include <verilated_vcd_c.h>
 
+//#define TRACE_ON
 
+#ifndef TRACE_ON
 #define SAVE_AUDIO
+#endif
 
 const char* audio_fname = "audio.raw";
 
@@ -26,8 +30,10 @@ const int log2_downsampling = 4;
 
 
 // 0: Mono: C - G - B - C
+// 14: like 0 but with PWL oscillators
 // 1: Fading in chord one note at a time: D3 - G3 - C4 - Eb4  // C3 - E4 - G4 - Bb4
 // 2: falling noise frequency (manual period update)
+// 10: fixed noise frequency
 // 3: falling oscillator frequency (manual period update)
 // 4: period sweep
 // 5: slow period sweep
@@ -35,7 +41,10 @@ const int log2_downsampling = 4;
 // 9: like 6, but starting at lowest period
 // 7: manual sweep slope, pwm_offset
 // 8: sweep slope, pwm_offset
-const int tune = 9;
+// 11: phase multipliers: (3, 2^n)
+// 12: phase multipliers: (1, 2^n)
+// 13: common_sat
+const int tune = 14;
 
 
 const int fastest_sweep = 2;
@@ -63,6 +72,13 @@ const int SWEEP_ADDR = 4;
 
 const int MODE_BIT_DETUNE0 = 0;
 const int MODE_BIT_NOISE = 3;
+const int MODE_FLAG_NOISE = 1 << MODE_BIT_NOISE;
+const int MODE_FLAG_3X = 16;
+const int CHANNEL_MODE_BIT_X2N0 = 5;
+const int CHANNEL_MODE_BIT_X2N1 = 6;
+const int MODE_FLAG_COMMON_SAT = 128;
+const int MODE_FLAG_PWL_OSC = 256;
+
 
 
 #ifdef DOWNSAMPLE
@@ -94,10 +110,28 @@ const int note_mantissas[12] = {909, 801, 698, 601, 510, 424, 343, 266, 194, 125
 
 
 Vpwls_multichannel_ALU_unit *top;
+VerilatedVcdC *m_trace;
+int sim_time = 0;
+
+
+inline void trace() {
+#ifdef TRACE_ON
+	m_trace->dump(sim_time); sim_time++;
+#endif
+}
 
 int pwm_acc;
 
-void timestep() { pwm_acc += top->pwm_out; top->clk = 0; top->eval(); top->clk = 1; top->eval(); }
+void timestep() {
+	pwm_acc += top->pwm_out;
+
+	top->clk = 0;
+	top->eval();
+	trace();
+	top->clk = 1;
+	top->eval();
+	trace();
+}
 
 
 
@@ -124,7 +158,7 @@ void period_write(int channel, int period) { reg_write(PERIOD_ADDR, channel, per
 void period_write(int channel, int octave, int mantissa) { period_write(channel, (octave << MANTISSA_BITS) | mantissa); }
 
 void amp_write(int channel, int amp) { reg_write(AMP_ADDR, channel, amp); }
-void mode_write(int channel, int detune_exp, bool lfsr_en=false) { reg_write(MODE_ADDR, channel, ((detune_exp*DETUNE_ON)&7) | (lfsr_en<<3)); }
+void mode_write(int channel, int detune_exp, int flags=0, int phase_factors=0) { reg_write(MODE_ADDR, channel, (((phase_factors&7)<<4)|(detune_exp*DETUNE_ON)&7) | flags); }
 
 
 #ifdef USE_NEW_REGMAP_B
@@ -170,6 +204,13 @@ int main(int argc, char** argv) {
 
 	top = new Vpwls_multichannel_ALU_unit();
 
+#ifdef TRACE_ON
+	Verilated::traceEverOn(true);
+	m_trace = new VerilatedVcdC;
+	top->trace(m_trace, 5);
+	m_trace->open("synth-sim.vcd");
+#endif
+
 	top->en = 1;
 	top->next_en = 1;
 	top->control_reg_write = 1;
@@ -207,7 +248,9 @@ int main(int argc, char** argv) {
 
 	int num_samples = NUM_NOTES << LOG2_SAMPLES_PER_NOTE;
 	//num_samples = 10; // !!!
-
+#ifdef TRACE_ON
+	num_samples = 16;
+#endif
 
 #ifdef SAVE_AUDIO
 	FILE* audio_fp = fopen(audio_fname, "w+");
@@ -231,20 +274,24 @@ int main(int argc, char** argv) {
 			amp_write(channel, 0); // Silence all channels
 			//mode_write(channel, 6);
 
-			//int tri_offset = (1 << (BITS-1-2)) - (1 << (BITS-2));
-			//int tri_offset = (1 << (BITS-2-2)) - (1 << (BITS-2));
-			int params = (((tri_offset >> (BITS-2-8))&255)<<8) | ((slope_offset >> (BITS-3-4))*17);
-			//printf("params = %d\n", params);
+			if (tune != 11 && tune != 13 && tune != 14) {
+				//int tri_offset = (1 << (BITS-1-2)) - (1 << (BITS-2));
+				//int tri_offset = (1 << (BITS-2-2)) - (1 << (BITS-2));
+				int params = (((tri_offset >> (BITS-2-8))&255)<<8) | ((slope_offset >> (BITS-3-4))*17);
+				//printf("params = %d\n", params);
 
-			//reg_write(PARAMS_ADDR, channel, params);
-			//reg_write(MODE_ADDR, channel, 0);
-			modeparams_write(channel, 0, pwm_offset_default, slope_default, slope_default);
+				//reg_write(PARAMS_ADDR, channel, params);
+				//reg_write(MODE_ADDR, channel, 0);
+				modeparams_write(channel, 0, pwm_offset_default, slope_default, slope_default);
+			}
 		}
 	}
 
-	if (tune == 0) {
+	int main_channel = 0;
+
+	if (tune == 0 || tune == 14) {
 		amp_write(0, 63);
-		mode_write(0, 5*DETUNE_ON);
+		mode_write(0, 5*DETUNE_ON, MODE_FLAG_PWL_OSC);
 	} else if (tune == 1) {
 		//top->tri_offset = (1 << (BITS-1-2)) - (1 << (BITS-2));
 		top->tri_offset = -(1 << (BITS-2));
@@ -262,15 +309,17 @@ int main(int argc, char** argv) {
 			//reg_write(MODE_ADDR, channel, detune_exp | (slope_exp0 << 4) | (slope_exp1 << 8));
 			modeparams_write(channel, detune_exp, pwm_offset_default, (slope_exp0 << 4) | (slope_default&15), (slope_exp1 << 4) | (slope_default&15));
 		}
-	} else if (tune == 2) {
+	} else if (tune == 2 || tune == 10) {
+		main_channel = 3;
 		// Try to preserve the noise
 		top->tri_offset = -(1 << (BITS-2));
 		top->slope_exp = 0;
 		top->slope_offset = 0;
 
-		amp_write(0, 63);
-		mode_write(0, 0, true);
-		period_write(0, 1, 0);
+		amp_write(main_channel, 63);
+		mode_write(main_channel, 0, true);
+		period_write(main_channel, 1, tune == 10 ? (1 << OCT_BITS) : 0);
+		//period_write(main_channel, 1, 0);
 	} else if (tune == 3 || tune == 4) {
 		amp_write(0, 63);
 		period_write(0, 0);
@@ -291,8 +340,17 @@ int main(int argc, char** argv) {
 
 		modeparams_write(0, detune_exp, pwm_offset, slope0, slope1);
 */
-	}
+	} else if (tune == 11 || tune == 12 || tune == 13) {
+		amp_write(0, 63);
+		period_write(0, 4, note_mantissas[0]); // C4
 
+		if (tune == 13) {
+			mode_write(0, 4, MODE_FLAG_COMMON_SAT, 1 | (1 << 1));
+			reg_write(SLOPE0_ADDR, 0, 128);
+			int slope_sweep_rate = 2+LOG2_SAMPLES_PER_NOTE-1+4-8 + 1;
+			sweep_pwmoffs_slope_write(0, 0, 0, slope_sweep_rate, 1, 1); // sweep down slope0
+		}
+	}
 
 
 // Main loop
@@ -381,7 +439,7 @@ int main(int argc, char** argv) {
 // Tune update
 // ===========
 
-		if (tune == 0) {
+		if (tune == 0 || tune == 14) {
 			// Play a melody on channel 0
 			if ((i & ((1 << LOG2_SAMPLES_PER_NOTE) - 1)) == 0) {
 				int t = i >> LOG2_SAMPLES_PER_NOTE;
@@ -403,7 +461,7 @@ int main(int argc, char** argv) {
 			amp_write(channel, amp);
 		} else if (tune == 2) {
 			int period = (i >> (2+LOG2_SAMPLES_PER_NOTE - 13));
-			period_write(0, period);
+			period_write(main_channel, period);
 		} else if (tune == 3) {
 			int period = (i >> (2+LOG2_SAMPLES_PER_NOTE - 13));
 			//int period = (i<<1) & 8191;
@@ -470,6 +528,14 @@ int main(int argc, char** argv) {
 					sweep_pwmoffs_slope_write(0, pwmoffs_sweep_rate, 0);
 				}
 			}
+		} else if (tune == 11 || tune == 12) {
+			int shr0 = LOG2_SAMPLES_PER_NOTE;
+			int t = (i >> shr0) & 3;
+			bool first = (i & ((1 << shr0) - 1)) == 0;
+			if (first) {
+				if (tune == 11) mode_write(0, 5, 0, 1 | (t<<1));
+				else if (tune == 12) mode_write(0, 4 + (t>0), 0, 0 | (t<<1));
+			}
 		}
 	}
 
@@ -477,6 +543,10 @@ int main(int argc, char** argv) {
 
 #ifdef SAVE_AUDIO
 	fclose(audio_fp);
+#endif
+
+#ifdef TRACE_ON
+	m_trace->close();
 #endif
 
 	// Cleanup

@@ -80,5 +80,13 @@ module tb ();
 	wire [15:0] sweep1_1 = test_harness.user_peripheral.mc_alu_unit.sweeps1[1];
 	wire [15:0] sweep1_2 = test_harness.user_peripheral.mc_alu_unit.sweeps1[2];
 	wire [15:0] sweep1_3 = test_harness.user_peripheral.mc_alu_unit.sweeps1[3];
+
+	wire [15:0] mode0 = test_harness.user_peripheral.mc_alu_unit.modes[0];
+	wire [15:0] mode1 = test_harness.user_peripheral.mc_alu_unit.modes[1];
+	wire [15:0] mode2 = test_harness.user_peripheral.mc_alu_unit.modes[2];
+	wire [15:0] mode3 = test_harness.user_peripheral.mc_alu_unit.modes[3];
 `endif
+
+	int counter = 0;
+	always_ff @(posedge clk) counter <= counter + 1;
 endmodule
