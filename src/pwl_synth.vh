@@ -20,6 +20,7 @@
 `define USE_COMMON_SAT
 `define USE_PWL_OSC
 `define USE_ORION_WAVE
+`define USE_ORION_MASK
 
 // Only used for verilator tests
 //// `define USE_TEST_INTERFACE

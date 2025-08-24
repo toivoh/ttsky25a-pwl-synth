@@ -250,6 +250,7 @@ module pwls_ALU #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BITS=4, OUT_RSHIFT=3
 		input wire src2_sext, src2_sext_less,
 		input wire inv_src2_tri_en, // set inv_src2 = src2[BITS-1]
 		input wire inv_src1, inv_src2, src2_mask_msbs, carry_in,
+		input wire [BITS-1:0] src2_mask,
 		input wire sat_en, ext_sat_en, result_sext,
 
 		output wire signed [BITS_E-1:0] result,
@@ -288,7 +289,9 @@ module pwls_ALU #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BITS=4, OUT_RSHIFT=3
 	wire sat_shl_sign = src2_in[BITS-1];
 
 
-	wire signed [BITS-1:0] src2_1 = src2_shifted & {{(1+REV_PHASE_SHR){!src2_mask_msbs}}, {(BITS-1-REV_PHASE_SHR){1'b1}}};
+	wire signed [BITS-1:0] src2_1a = src2_shifted & {{(1+REV_PHASE_SHR){!src2_mask_msbs}}, {(BITS-1-REV_PHASE_SHR){1'b1}}};
+	wire signed [BITS-1:0] src2_1 = src2_1a & src2_mask;
+
 	// forward extra bit or sign extend
 	reg src2_extra_bit; // not a register
 	always_comb begin
@@ -382,7 +385,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 		output wire [`PART_SEL_BITS-1:0] part_sel_out,
 		output wire [`DEST_SEL_BITS-1:0] dest_sel_out,
 		output wire replace_src2_with_amp_out,
-		output wire src2_sext_out, src2_sext_less_out, out_acc_frac_update_en_out, out_acc_frac_mask_out, inv_src2_tri_en_out, result_sext_out,
+		output wire src2_sext_out, src2_sext_less_out, out_acc_frac_update_en_out, out_acc_frac_mask_out, inv_src2_tri_en_out, orion_mask_en_out, result_sext_out,
 		output wire reg_we_out,
 		output wire sweep_sign_out
 	);
@@ -427,7 +430,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 	reg [`PRED_SEL_BITS-1:0] pred_sel;
 	reg [`PART_SEL_BITS-1:0] part_sel;
 	reg replace_src2_with_amp;
-	reg src2_sext, src2_sext_less, out_acc_frac_update_en, out_acc_frac_mask, inv_src2_tri_en, result_sext;
+	reg src2_sext, src2_sext_less, out_acc_frac_update_en, out_acc_frac_mask, inv_src2_tri_en, orion_mask_en, result_sext;
 	reg reg_we_if_oct_en, reg_we_only_if_part;
 
 	always_comb begin
@@ -442,6 +445,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 		replace_src2_with_amp = 0;
 		src2_sext = 0;
 		src2_sext_less = 0;
+		orion_mask_en = 0;
 		result_sext = 0;
 		out_acc_frac_update_en = 1;
 		out_acc_frac_mask = 1;
@@ -728,6 +732,9 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 					src2_lshift = 0; // TODO
 					//pred_we = 1; pred_sel = `PRED_SEL_CMP; // We don't care about the value of pred right now
 					dest_sel = `DEST_SEL_ACC;
+`ifdef USE_ORION_MASK
+					orion_mask_en = 1;
+`endif
 				end
 `endif
 			end
@@ -884,6 +891,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 	named_buffer nb_src2_sext(.in(src2_sext), .out(src2_sext_out));
 	named_buffer nb_src2_sext_less(.in(src2_sext_less), .out(src2_sext_less_out));
 	named_buffer nb_result_sext(.in(result_sext), .out(result_sext_out));
+	named_buffer nb_orion_mask_en(.in(orion_mask_en), .out(orion_mask_en_out));
 	named_buffer nb_out_acc_frac_update_en(.in(out_acc_frac_update_en), .out(out_acc_frac_update_en_out));
 	named_buffer nb_out_acc_frac_mask(.in(out_acc_frac_mask), .out(out_acc_frac_mask_out));
 	named_buffer nb_inv_src2_tri_en(.in(inv_src2_tri_en), .out(inv_src2_tri_en_out));
@@ -921,6 +929,7 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 		input wire signed [BITS_E-1:0] src1_external,
 		input wire [BITS-1:0] phase_external, // Only used for rev_phase, must be valid when src2 reads rev_phase (or delayed is used, which depends on it)
 		input wire [BITS-2-1:0] amp_external,
+		input wire [7:0] slope1_external,
 
 		input wire oct_enable_index_override_en,
 		input wire hard_oct_enable_override_en, hard_oct_enable_override, // only apply if oct_enable_index_override_en
@@ -1082,7 +1091,7 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 	wire [1:0] src2_forward_extra_bit;
 	wire pred_we, part_we, lfsr_extra_bits_we;
 	wire [`DEST_SEL_BITS-1:0] dest_sel;
-	wire replace_src2_with_amp, src2_sext, src2_sext_less, out_acc_frac_update_en, out_acc_frac_mask, inv_src2_tri_en, result_sext;
+	wire replace_src2_with_amp, src2_sext, src2_sext_less, out_acc_frac_update_en, out_acc_frac_mask, inv_src2_tri_en, orion_mask_en, result_sext;
 	wire [`PRED_SEL_BITS-1:0] pred_sel;
 	wire [`PART_SEL_BITS-1:0] part_sel;
 	wire sweep_sign;
@@ -1142,7 +1151,7 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 		.dest_sel_out(dest_sel),
 		.pred_sel_out(pred_sel), .part_sel_out(part_sel),
 		.replace_src2_with_amp_out(replace_src2_with_amp), .src2_sext_out(src2_sext), .src2_sext_less_out(src2_sext_less),
-		.out_acc_frac_update_en_out(out_acc_frac_update_en), .out_acc_frac_mask_out(out_acc_frac_mask), .result_sext_out(result_sext),
+		.out_acc_frac_update_en_out(out_acc_frac_update_en), .out_acc_frac_mask_out(out_acc_frac_mask), .orion_mask_en_out(orion_mask_en), .result_sext_out(result_sext),
 		.inv_src2_tri_en_out(inv_src2_tri_en), .reg_we_out(reg_we), .sweep_sign_out(sweep_sign)
 	);
 
@@ -1210,6 +1219,7 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 	end
 
 `ifdef USE_ORION_WAVE
+`ifndef USE_ORION_MASK
 	// "86de7c54f19203ba", ignore positions above 8, add 3 more phase bits
 	wire [BITS_E-1:0] bitshuffle_acc;
 	assign bitshuffle_acc[ 0] = 0;
@@ -1225,6 +1235,22 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 	assign bitshuffle_acc[10] = acc[11];
 	assign bitshuffle_acc[11] = 0;
 	assign bitshuffle_acc[12] = 0;
+`else
+	wire [BITS_E-1:0] bitshuffle_acc;
+	assign bitshuffle_acc[ 0] = acc[11]; // mask for original Orion Wave
+	assign bitshuffle_acc[ 1] = acc[ 4];
+	assign bitshuffle_acc[ 2] = acc[10]; // mask for original Orion Wave
+	assign bitshuffle_acc[ 3] = acc[ 7];
+	assign bitshuffle_acc[ 4] = acc[ 8];
+	assign bitshuffle_acc[ 5] = acc[ 9]; // mask for original Orion Wave
+	assign bitshuffle_acc[ 6] = acc[10];
+	assign bitshuffle_acc[ 7] = acc[11]; // mask for original Orion Wave
+	assign bitshuffle_acc[ 8] = acc[ 8]; // mask for original Orion Wave
+	assign bitshuffle_acc[ 9] = acc[ 9];
+	assign bitshuffle_acc[10] = acc[11];
+	assign bitshuffle_acc[11] = 0;
+	assign bitshuffle_acc[12] = 0;
+`endif
 `endif
 
 
@@ -1315,11 +1341,20 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 	//wire [BITS-1:0] src2_in = replace_src2_with_amp ? src1_external : src2_in0; // Feed in amp through src1_external in this case
 	wire [15:0] src2_in = replace_src2_with_amp ? amp_external : src2_in0;
 
+	reg [BITS-1:0] src2_mask; // not register
+	always_comb begin
+		src2_mask = '1;
+		if (orion_mask_en) begin
+			src2_mask[BITS-1:0] = slope1_external[0] ? '1 : 0; // replicate the bottom mask bit
+			src2_mask[BITS-1-1 -: 8] = slope1_external;
+		end
+	end
+
 	wire equal, src2_pre_sign, delayed_simple;
 	pwls_ALU #(.BITS(BITS), .BITS_E(BITS_E), .SHIFT_COUNT_BITS(SHIFT_COUNT_BITS), .OUT_RSHIFT(OUT_RSHIFT), .REV_PHASE_SHR(REV_PHASE_SHR), .AMP_BITS(AMP_BITS)) alu(
 		.clk(clk), .reset(reset),
 		.src1_in(src1_in), .src2_in(src2_in), .src2_rot(src2_rot), .src2_forward_extra_bit(src2_forward_extra_bit), .src2_lshift(src2_lshift + src2_lshift_extra),
-		.src2_sext(src2_sext), .src2_sext_less(src2_sext_less), .inv_src2_tri_en(inv_src2_tri_en), .result_sext(result_sext),
+		.src2_sext(src2_sext), .src2_sext_less(src2_sext_less), .inv_src2_tri_en(inv_src2_tri_en), .src2_mask(src2_mask), .result_sext(result_sext),
 		.src2_mask_msbs(src2_mask_msbs), .inv_src1(inv_src1), .inv_src2(inv_src2), .carry_in(carry_in), .sat_en(sat_en), .ext_sat_en(ext_sat_en),
 		.result(result), .cmp_result(cmp_result), .delayed(delayed_simple), .equal(equal), .src2_pre_sign(src2_pre_sign)
 	);
@@ -1991,7 +2026,7 @@ module pwls_multichannel_ALU_unit #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BI
 		//.octave(octave_reg),
 		.detune_exp(detune_exp), .slope_exp(slope_exp_eff), .channel_mode(channel_mode), .sweep_dir(sweep_dir), .sweep_index(sweep_index),
 		.src1_sel_out(src1_sel), .part_out(part), .keep_exp_on_top(keep_exp_on_top),
-		.src1_external(src1), .phase_external(curr_phase), .amp_external(amp),
+		.src1_external(src1), .phase_external(curr_phase), .amp_external(amp), .slope1_external(slope1),
 		.dest_sel_out(dest_sel), .result(result), .reg_we(reg_we_internal0),
 		.hard_oct_enable_override_en(hard_oct_enable_override_en), .hard_oct_enable_override(hard_oct_enable_override),
 		.oct_enable_index_override_en(oct_enable_index_override_en), .oct_enable_index_override(oct_enable_index_override), .oct_counter_term(oct_counter_term),

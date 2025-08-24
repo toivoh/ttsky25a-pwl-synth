@@ -358,6 +358,7 @@ int main(int argc, char** argv) {
 		int detune_exp = 0;
 		//int detune_exp = 4;
 		mode_write(0, detune_exp, MODE_FLAGS_ORION);
+		reg_write(SLOPE1_ADDR, 0, 0b11001010);
 	}
 
 // Main loop
