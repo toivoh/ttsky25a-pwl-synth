@@ -667,20 +667,24 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 				part_we = main_en;
 				dest_sel = `DEST_SEL_ACC;
 
-`ifdef USE_ORION_WAVE
-				if (orion_en) begin
-					dest_sel = `DEST_SEL_NOTHING;
-					part_we = main_en;
-					part_sel = `PART_SEL_ZERO;
-				end
-`endif
-
 `ifdef USE_X2N_FLAGS
 				inv_src2_tri_en = 1;
 				ext_sat_en = 0;
 				src2_rot = 0;
 				if (sub_channel == 1) begin
 					src2_lshift = channel_mode[`CHANNEL_MODE_BIT_X2N1 -: 2];
+				end
+`endif
+
+`ifdef USE_ORION_WAVE
+				if (orion_en) begin
+					// Apply the shift and add, but not the triangle
+					//dest_sel = `DEST_SEL_NOTHING;
+					inv_src2_tri_en = 0;
+					sat_en = 0;
+					inv_src2 = 0;
+					part_we = main_en;
+					part_sel = `PART_SEL_ZERO;
 				end
 `endif
 			end
