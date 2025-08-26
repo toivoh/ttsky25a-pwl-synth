@@ -67,7 +67,7 @@ endmodule
 
 `else // not USE_LATCHES
 
-module pwls_shared_data #(BITS=16) (
+module pwls_shared_data #(parameter BITS=16) (
 		input wire clk, reset,
 		input wire [BITS-1:0] in,
 		output wire [BITS-1:0] out
