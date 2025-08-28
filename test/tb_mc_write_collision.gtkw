@@ -1,0 +1,86 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Tue Aug 26 06:42:36 2025
+[*]
+[dumpfile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_mc.vcd"
+[dumpfile_mtime] "Tue Aug 26 06:42:26 2025"
+[dumpfile_size] 102525
+[savefile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_mc_write_collision.gtkw"
+[timestart] 0
+[size] 3004 985
+[pos] -1 -1
+*-19.000000 1169000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb_mc.
+[treeopen] tb_mc.mc_alu_unit.
+[treeopen] tb_mc.mc_alu_unit.alu_unit.
+[sst_width] 297
+[signals_width] 272
+[sst_expanded] 1
+[sst_vpaned_height] 292
+@28
+tb_mc.rst_n
+@420
+tb_mc.en_counter
+@28
+tb_mc.clk
+@200
+-
+@28
+tb_mc.mc_alu_unit.en
+tb_mc.mc_alu_unit.en_eff
+tb_mc.mc_alu_unit.extra_term
+@22
+tb_mc.mc_alu_unit.term_index_eff[3:0]
+@28
+tb_mc.mc_alu_unit.state_eff[2:0]
+@200
+-
+@22
+tb_mc.mc_alu_unit.alu_unit.acc[12:0]
+@200
+-
+@28
+tb_mc.mc_alu_unit.reg_we
+tb_mc.mc_alu_unit.reg_we_internal
+tb_mc.mc_alu_unit.rmw_continued
+@22
+tb_mc.mc_alu_unit.reg_waddr[5:0]
+tb_mc.mc_alu_unit.reg_waddr_internal[5:0]
+@28
+tb_mc.mc_alu_unit.write_collision
+@200
+-
+@22
+tb_mc.phase0[11:0]
+@23
+tb_mc.period0[12:0]
+@200
+-
+-MC
+@22
+tb_mc.mc_alu_unit.next_reg_raddr_p[5:0]
+@28
+tb_mc.mc_alu_unit.next_curr_channel[1:0]
+tb_mc.mc_alu_unit.curr_channel[1:0]
+@22
+tb_mc.mc_alu_unit.curr_phase[11:0]
+@200
+-
+-ALU_unit
+@22
+tb_mc.mc_alu_unit.alu_unit.phase_external[11:0]
+tb_mc.mc_alu_unit.alu_unit.src1[12:0]
+tb_mc.mc_alu_unit.alu_unit.src1_sel[3:0]
+@200
+-
+-ALU
+@22
+tb_mc.mc_alu_unit.alu_unit.alu.src1_in[12:0]
+tb_mc.mc_alu_unit.alu_unit.alu.src1[12:0]
+@200
+-
+@22
+tb_mc.mc_alu_unit.alu_unit.alu.src2_in[15:0]
+tb_mc.mc_alu_unit.alu_unit.alu.src2[12:0]
+[pattern_trace] 1
+[pattern_trace] 0

@@ -29,9 +29,10 @@ module tb_mc #(parameter BITS=12, OCT_BITS=3, DETUNE_EXP_BITS=3, SLOPE_EXP_BITS=
 	reg next_en = 1;
 
 	pwls_multichannel_ALU_unit #(.BITS(BITS), .OCT_BITS(OCT_BITS), .DETUNE_EXP_BITS(DETUNE_EXP_BITS), .SLOPE_EXP_BITS(SLOPE_EXP_BITS), .NUM_CHANNELS(NUM_CHANNELS)) mc_alu_unit(
-		.clk(clk), .reset(!rst_n), .en(en), .next_en(next_en),
+		.clk(clk), .rst_n(rst_n), .en(en), .next_en(next_en),
 		.control_reg_write(1), .state_reg_write(1),
 		.reg_waddr(reg_waddr), .reg_wdata(reg_wdata), .reg_we(reg_we),
+		.reg_raddr('1), .reg_raddr_valid(0),
 		//.detune_exp(detune_exp),
 		.tri_offset(tri_offset), .slope_exp(slope_exp), .slope_offset(slope_offset) //, .amp(amp)
 	);

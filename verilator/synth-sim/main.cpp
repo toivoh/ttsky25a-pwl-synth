@@ -13,6 +13,8 @@
 #include "verilated.h"
 #include <verilated_vcd_c.h>
 
+//#define STEREO_ON
+
 //#define TRACE_ON
 
 #ifndef TRACE_ON
@@ -45,7 +47,7 @@ const int log2_downsampling = 4;
 // 12: phase multipliers: (1, 2^n)
 // 13: common_sat
 // 15: orion pedal
-const int tune = 15;
+const int tune = 11;
 
 
 const int fastest_sweep = 2;
@@ -65,6 +67,8 @@ const int PWM_OFFSET_ADDR = 4;
 const int MODE_ADDR = 5;
 const int SWEEP_PA_ADDR = 6; // {period, amp} sweep
 const int SWEEP_WS_ADDR = 7; // {pwm_offset, slope} sweep
+const int PHASE_ADDR = 8;
+const int OC_ADDR = 9;
 #else
 const int MODE_ADDR = 2;
 const int PARAMS_ADDR = 3;
@@ -82,6 +86,8 @@ const int MODE_FLAG_PWL_OSC = 256;
 const int MODE_FLAGS_ORION = MODE_FLAG_NOISE | MODE_FLAG_PWL_OSC;
 
 
+const int CFG_FLAG_STEREO_EN = 1;
+
 
 #ifdef DOWNSAMPLE
 const int LOG2_DOWNSAMPLING = log2_downsampling;
@@ -97,6 +103,7 @@ const int BITS = 12;
 const int OCT_BITS = 3;
 const int MANTISSA_BITS = 10;
 const int PERIOD_BITS = OCT_BITS + MANTISSA_BITS;
+const int OUT_ACC_FRAC_BITS = 4;
 
 const int FILTER_OUT_TAPS = 8;
 const int LOG2_FILTER_DOWNSAMPLING = 4;
@@ -162,6 +169,8 @@ void period_write(int channel, int octave, int mantissa) { period_write(channel,
 void amp_write(int channel, int amp) { reg_write(AMP_ADDR, channel, amp); }
 void mode_write(int channel, int detune_exp, int flags=0, int phase_factors=0) { reg_write(MODE_ADDR, channel, (((phase_factors&7)<<4)|(detune_exp*DETUNE_ON)&7) | flags); }
 
+void cfg_write(int cfg) { reg_write(OC_ADDR, 2, cfg); }
+
 
 #ifdef USE_NEW_REGMAP_B
 
@@ -218,11 +227,16 @@ int main(int argc, char** argv) {
 	top->control_reg_write = 1;
 	top->state_reg_write = 1;
 
-	top->reset = 1; 
+	//top->reset = 1; 
+	top->rst_n = 0;
 	for (int i = 0; i < 10; i++) timestep();
-	top->reset = 0;
+	top->rst_n = 1;
+	//top->reset = 0;
 
 	int output_offset = top->pwm_out_offset;
+#ifdef STEREO_ON
+	output_offset = 48;
+#endif
 	//int pwm_offset = output_offset - (64-56);
 	int pwm_out_offset = output_offset - (64-64);
 	printf("output_offset = %d\n", output_offset);
@@ -265,6 +279,10 @@ int main(int argc, char** argv) {
 
 // Tune setup
 // ==========
+
+#ifdef STEREO_ON
+	cfg_write(CFG_FLAG_STEREO_EN);
+#endif
 
 	int tri_offset = (1 << (BITS-2-2)); // full range is 0 to 2^(BITS-2)-1
 	int slope_offset = 1 << (BITS - 4); // full range is 0 to 2^(BITS-3)-1
@@ -364,8 +382,9 @@ int main(int argc, char** argv) {
 // Main loop
 // =========
 
-	float accs[FILTER_OUT_TAPS];
-	memset(accs, 0, sizeof(accs));
+	float accs_l[FILTER_OUT_TAPS], accs_r[FILTER_OUT_TAPS];
+	memset(accs_l, 0, sizeof(accs_l));
+	memset(accs_r, 0, sizeof(accs_r));
 
 	int sample = -(1 << 15);
 	int prev_sample = sample;
@@ -380,12 +399,20 @@ int main(int argc, char** argv) {
 		if (!run) break;
 
 #ifdef DOWNSAMPLE
-		float filtered_sample = accs[FILTER_OUT_TAPS - 1];
-		memmove(accs + 1, accs, sizeof(float)*(FILTER_OUT_TAPS - 1));
-		accs[0] = 0;
+		float filtered_sample_l = accs_l[FILTER_OUT_TAPS - 1];
+		memmove(accs_l + 1, accs_l, sizeof(float)*(FILTER_OUT_TAPS - 1));
+		accs_l[0] = 0;
+#ifdef STEREO_ON
+		float filtered_sample_r = accs_r[FILTER_OUT_TAPS - 1];
+		memmove(accs_r + 1, accs_r, sizeof(float)*(FILTER_OUT_TAPS - 1));
+		accs_r[0] = 0;
+#endif
 #endif
 
 		for (int subsample = 0; subsample < (1<<LOG2_DOWNSAMPLING); subsample++) {
+#ifdef STEREO_ON
+		  for (int side = 0; side < 2; side++) {
+#endif
 			bool ok = false;
 			for (int k = (i > 0); k < 2; k++) { // wait for two samples the first time; first one is uninitialized
 				for (int j = 0; j < MAX_CYCLES_PER_SAMPLE; j++) {
@@ -415,33 +442,60 @@ int main(int argc, char** argv) {
 				if (sample_print_counter > 25) run = false;
 			}
 */
-			int pwm_adj = pwm_acc - pwm_out_offset;
+
+#ifdef STEREO_ON
+			int curr_pwm_offset = side ? 37-12 : 37-21;
+#else
+			int curr_pwm_offset = pwm_out_offset;
+#endif
+
+#ifndef STEREO_ON // TODO: test even with stereo
+			int pwm_adj = pwm_acc - curr_pwm_offset;
 			if (i > 0 && pwm_acc > 0 && pwm_adj*16 != sample) {
-				printf("(%d, %d): sample = %d, pwm_adj = %d\n", i, subsample, sample, pwm_adj);
+#ifdef STEREO_ON
+				printf("side = %d: ", side);
+#endif
+				printf("(%d, %d): sample = %d, pwm_adj = %d, error = pwm_adj - (sample>>4) = %d\n", i, subsample, sample, pwm_adj, pwm_adj - (sample>>4));
 				run = false;
 			}
+#endif
 
 			pwm_acc = 0;
 
-
-			sample = top->out_acc_out - (output_offset << 4);
+			sample = (top->out_acc_out & (-1 << OUT_ACC_FRAC_BITS)) - (output_offset << 4);
 			if (sample >= (1 << (BITS - 1))) sample -= (1 << BITS);
 			//printf("%d ", sample);
 			//if (subsample == 0 && i > ((1<<15) - 256)) printf("%d ", sample); //!!!!
 
 #ifdef DOWNSAMPLE
+#ifdef STEREO_ON
+			float *accs = side ? accs_r : accs_l;
+#else
+			float *accs = accs_l;
+#endif
 			for (int j = 0; j < FILTER_OUT_TAPS; j++) accs[j] += sample * (1.0f * FILTER_OUT_TAPS / (1 << BITS)) * filter_kernel[j*FILTER_DOWNSAMPLING + (subsample << (LOG2_FILTER_DOWNSAMPLING - LOG2_DOWNSAMPLING))];
+#endif
+
+#ifdef STEREO_ON
+		  } // side loop
 #endif
 		}
 		//if (i > (1<<15)) break; //!!!!
 
 #ifdef SAVE_AUDIO
 #ifdef DOWNSAMPLE
-		int int_sample = filtered_sample * (16384 << (LOG2_FILTER_DOWNSAMPLING - LOG2_DOWNSAMPLING));
+		int int_sample = filtered_sample_l * (16384 << (LOG2_FILTER_DOWNSAMPLING - LOG2_DOWNSAMPLING));
+#ifdef STEREO_ON
+		int int_sample_r = filtered_sample_r * (16384 << (LOG2_FILTER_DOWNSAMPLING - LOG2_DOWNSAMPLING));
+#endif
 #else
 		int int_sample = sample << 16-BITS;
 #endif
+
 		fwrite(&int_sample, 2, 1, audio_fp);
+#ifdef STEREO_ON
+		fwrite(&int_sample_r, 2, 1, audio_fp);
+#endif
 #endif
 
 // Tune update

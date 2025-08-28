@@ -5,14 +5,16 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles
 
-async def reg_write(dut, addr, channel, value):
+async def reg_write(dut, addr, channel, value, en=0):
 	dut.reg_waddr.value = addr*4 + channel
 	dut.reg_wdata.value = value
 	dut.reg_we.value = 1
-	dut.en.value = 0
+	prev_en = dut.en.value
+	dut.en.value = en
 	await ClockCycles(dut.clk, 1)
 	dut.reg_we.value = 0
-	dut.en.value = 1
+	dut.en.value = prev_en
+	print("prev_en =", prev_en)
 
 
 #@cocotb.test()
@@ -104,7 +106,7 @@ async def test_project_old(dut):
 	await ClockCycles(dut.clk, 1 + PIPELINE + 256*32)
 
 
-@cocotb.test()
+#@cocotb.test()
 async def test_period_sweep(dut):
 	dut._log.info("Start")
 
@@ -139,3 +141,74 @@ async def test_period_sweep(dut):
 
 
 	await ClockCycles(dut.clk, 64*8*4)
+
+
+@cocotb.test()
+async def test_write_collision(dut):
+	dut._log.info("Start")
+
+	mc_alu_unit = dut.mc_alu_unit
+	alu_unit = mc_alu_unit.alu_unit
+
+	BITS = int(dut.BITS.value)
+	PHASE_BITS = BITS
+	NUM_STATES = int(alu_unit.STATE_LAST.value) + 1
+
+	clock = Clock(dut.clk, 100, units="ns")
+	cocotb.start_soon(clock.start())
+
+
+
+	if False:
+		# Try write collision for period
+		dut.en.value = 0
+		dut.next_en.value = 1#0
+
+		for i in range(7):
+			dut.rst_n.value = 0
+			await ClockCycles(dut.clk, 4)
+			dut.rst_n.value = 1
+
+			await reg_write(dut, 0, 0, 0, en=1) # Set period for channel 0
+			await reg_write(dut, 6, 0, (1 << 8)) # Set period sweep for channel 0
+
+			dut.en.value = 1
+			dut.next_en.value = 1
+
+			n = 64+8
+			n0 = 60-i
+
+			await ClockCycles(dut.clk, n0)
+			await reg_write(dut, 0, 0, 0x100, en=1) # Set period for channel 0
+			dut.en.value = 1
+
+			await ClockCycles(dut.clk, n-n0)
+
+		await ClockCycles(dut.clk, 8)
+
+	if True:
+		# Try write collision for phase
+		for i in range(5):
+			dut.en.value = 0
+			dut.next_en.value = 1#0
+
+			dut.rst_n.value = 0
+			await ClockCycles(dut.clk, 4)
+			dut.rst_n.value = 1
+			mc_alu_unit.term_index.value = 8;
+			mc_alu_unit.state.value = 7;
+
+			await reg_write(dut, 8, 0, 0) # Set period for channel 0
+
+			dut.en.value = 1
+			dut.next_en.value = 1
+
+			n = 16
+			#n0 = 3-i
+			n0 = 4-i
+
+			await ClockCycles(dut.clk, n0)
+			await reg_write(dut, 8, 0, 0x100, en=1) # Set period for channel 0
+			dut.en.value = 1
+
+			await ClockCycles(dut.clk, n-n0)

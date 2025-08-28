@@ -74,4 +74,7 @@ module tb_peripheral #(parameter BITS=12, OCT_BITS=3, DETUNE_EXP_BITS=3, SLOPE_E
 	wire [15:0] sweep1_1 = peripheral.mc_alu_unit.sweeps1[1];
 	wire [15:0] sweep1_2 = peripheral.mc_alu_unit.sweeps1[2];
 	wire [15:0] sweep1_3 = peripheral.mc_alu_unit.sweeps1[3];
+
+	int en_counter = 0;
+	always_ff @(posedge clk) en_counter <= en_counter + (peripheral.mc_alu_unit.en_eff && rst_n);
 endmodule
