@@ -1,0 +1,54 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Sat Aug 30 10:01:57 2025
+[*]
+[dumpfile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_compare.vcd"
+[dumpfile_mtime] "Sat Aug 30 09:51:57 2025"
+[dumpfile_size] 1226372
+[savefile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_compare_gl.gtkw"
+[timestart] 0
+[size] 1873 600
+[pos] -1 -1
+*-19.000000 57000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb_compare.
+[treeopen] tb_compare.test_harness.
+[sst_width] 297
+[signals_width] 478
+[sst_expanded] 1
+[sst_vpaned_height] 158
+@28
+tb_compare.rst_n
+tb_compare.clk
+@200
+-
+@28
+tb_compare.cmd[2:0]
+@22
+tb_compare.wdata[12:0]
+@200
+-
+@22
+tb_compare.data_out[12:0]
+@28
+tb_compare.data_ready
+@200
+-
+@28
+tb_compare.test_harness.\dut.mc_alu_unit.term_index[2]
+tb_compare.test_harness.\dut.mc_alu_unit.term_index[1]
+tb_compare.test_harness.\dut.mc_alu_unit.alu_unit.extra_term
+@200
+-
+@28
+tb_compare.test_harness.\dut.mc_alu_unit.alu_unit.state[0]
+tb_compare.test_harness.\dut.mc_alu_unit.alu_unit.state[1]
+tb_compare.test_harness.\dut.mc_alu_unit.alu_unit.state[2]
+tb_compare.test_harness.\dut.mc_alu_unit.alu_unit.state_decoder_late.stereo_en
+tb_compare.test_harness.\dut.mc_alu_unit.alu_unit.state_decoder_late.sub_channel
+tb_compare.test_harness.\dut.mc_alu_unit.alu_unit.pred
+tb_compare.test_harness.\dut.mc_alu_unit.alu_unit.part
+tb_compare.test_harness.\dut.mc_alu_unit.cfg_reg.gclk
+@29
+tb_compare.test_harness.\dut.mc_alu_unit.cfg_reg.wdata[0]
+[pattern_trace] 1
+[pattern_trace] 0

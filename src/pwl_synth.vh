@@ -24,6 +24,8 @@
 `define USE_ORION_MASK
 `define USE_STEREO
 
+//`define USE_MORE_REG_RESETS
+
 
 `ifdef USE_STEREO
 `define USE_GLOBAL_CFG_REG
@@ -125,10 +127,9 @@
 `endif
 
 `define DEST_SEL_BITS 2
-`define DEST_SEL_PHASE   2'd0
+`define DEST_SEL_NOTHING 2'd0
 `define DEST_SEL_ACC     2'd1
 `define DEST_SEL_OUT_ACC 2'd2
-`define DEST_SEL_NOTHING 2'd3
 
 
 `define STATE_CMP_REV_PHASE 0
@@ -199,6 +200,8 @@
 
 `define PIPELINE_CURR_CHANNEL
 
+`define USE_P_LATCHES_ONLY
+
 `ifndef PURE_RTL
 //`define NAMED_BUF_EN
 `define USE_LATCHES
@@ -211,4 +214,12 @@
 `ifndef SCL_sg13g2_stdcell
 `define SCL_sky130_fd_sc_hd
 `endif
+`endif
+
+
+`ifdef USE_P_LATCHES_ONLY
+// Need at least 4, since data_in[3:0] becomes invalid after one cycle, when the P latch reds it. Could use 4, 8, or 16.
+`define INTERFACE_REGISTER_SHIFT 4
+`else
+`define INTERFACE_REGISTER_SHIFT 0
 `endif

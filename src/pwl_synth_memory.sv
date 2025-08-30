@@ -15,6 +15,12 @@ module pwls_shared_data #(parameter BITS=16) (
 	);
 	genvar i;
 
+`ifdef USE_P_LATCHES_ONLY
+	// Need to delay the release one extra cycle since the data is read after the write enable when using only P latches
+	reg rst_n_prev;
+	always_ff @(posedge clk) rst_n_prev <= rst_n;
+	assign out = rst_n_prev ? in : 0;
+`else
 	wire [BITS-1:0] data_in = !rst_n ? '0 : in;
 	wire [BITS-1:0] latch_out;
 	generate
@@ -37,12 +43,13 @@ module pwls_shared_data #(parameter BITS=16) (
 `endif
 		end
 	endgenerate
+`endif
 endmodule : pwls_shared_data
 
 module pwls_register #(parameter BITS=16) (
 		input wire clk, rst_n,
 		input wire we,
-		input wire [BITS-1:0] wdata,
+		input wire [BITS-1:0] wdata, next_wdata,
 		output wire [BITS-1:0] rdata
 	);
 	genvar i;
@@ -80,13 +87,17 @@ endmodule : pwls_shared_data
 module pwls_register #(parameter BITS=16) (
 		input wire clk, rst_n,
 		input wire we,
-		input wire [BITS-1:0] wdata,
+		input wire [BITS-1:0] wdata, next_wdata,
 		output wire [BITS-1:0] rdata
 	);
 	reg [BITS-1:0] data;
 	always_ff @(posedge clk) begin
 		if (!rst_n) data <= 0;
+`ifdef USE_P_LATCHES_ONLY
+		else if (we) data <= next_wdata; // One cycle less delay on the D input
+`else
 		else if (we) data <= wdata;
+`endif
 	end
 	assign rdata = data;
 endmodule

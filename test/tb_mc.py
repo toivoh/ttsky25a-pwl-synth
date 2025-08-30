@@ -157,9 +157,7 @@ async def test_write_collision(dut):
 	clock = Clock(dut.clk, 100, units="ns")
 	cocotb.start_soon(clock.start())
 
-
-
-	if False:
+	if True:
 		# Try write collision for period
 		dut.en.value = 0
 		dut.next_en.value = 1#0

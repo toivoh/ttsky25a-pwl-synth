@@ -1,0 +1,93 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Sat Aug 30 13:05:10 2025
+[*]
+[dumpfile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb.vcd"
+[dumpfile_mtime] "Sat Aug 30 12:54:15 2025"
+[dumpfile_size] 105986908
+[savefile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_gl.gtkw"
+[timestart] 0
+[size] 2615 1549
+[pos] -1 -1
+*-22.000000 1440000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb.
+[treeopen] tb.test_harness.
+[sst_width] 297
+[signals_width] 596
+[sst_expanded] 1
+[sst_vpaned_height] 487
+@28
+tb.rst_n
+tb.clk
+@200
+-
+@28
+tb.test_harness.\user_peripheral.mc_alu_unit.reg_we_prev
+tb.test_harness.\clknet_0_user_peripheral.mc_alu_unit.genblk1[0].periods_reg.gclk
+@200
+-
+@28
+tb.test_harness.\i_spi_reg.reg_data_i[4]
+tb.test_harness.\i_spi_reg.reg_data_i[5]
+tb.test_harness.\i_spi_reg.reg_data_i[6]
+tb.test_harness.\i_spi_reg.reg_data_i[7]
+@200
+-
+@28
+tb.test_harness.\user_peripheral.mc_alu_unit.cfg_reg.wdata[0]
+tb.test_harness.\user_peripheral.mc_alu_unit.cfg_reg.wdata[1]
+tb.test_harness.\user_peripheral.mc_alu_unit.cfg_reg.wdata[2]
+tb.test_harness.\user_peripheral.mc_alu_unit.cfg_reg.wdata[3]
+tb.test_harness.\user_peripheral.mc_alu_unit.cfg_reg.wdata[4]
+tb.test_harness.\user_peripheral.mc_alu_unit.cfg_reg.wdata[5]
+tb.test_harness.\user_peripheral.mc_alu_unit.cfg_reg.wdata[6]
+tb.test_harness.\user_peripheral.mc_alu_unit.cfg_reg.wdata[7]
+tb.test_harness.\user_peripheral.mc_alu_unit.cfg_reg.wdata[8]
+tb.test_harness.\user_peripheral.mc_alu_unit.cfg_reg.wdata[9]
+tb.test_harness.\user_peripheral.mc_alu_unit.cfg_reg.wdata[10]
+tb.test_harness.\user_peripheral.mc_alu_unit.cfg_reg.wdata[11]
+tb.test_harness.\user_peripheral.mc_alu_unit.genblk1[0].periods_reg.wdata[12]
+@200
+-
+-
+@28
+tb.test_harness.\user_peripheral.mc_alu_unit.genblk1[0].periods_reg.rdata[0]
+tb.test_harness.\user_peripheral.mc_alu_unit.genblk1[0].periods_reg.rdata[1]
+tb.test_harness.\user_peripheral.mc_alu_unit.genblk1[0].periods_reg.rdata[2]
+tb.test_harness.\user_peripheral.mc_alu_unit.genblk1[0].periods_reg.rdata[3]
+tb.test_harness.\user_peripheral.mc_alu_unit.genblk1[0].periods_reg.rdata[4]
+tb.test_harness.\user_peripheral.mc_alu_unit.genblk1[0].periods_reg.rdata[5]
+tb.test_harness.\user_peripheral.mc_alu_unit.genblk1[0].periods_reg.rdata[6]
+tb.test_harness.\user_peripheral.mc_alu_unit.genblk1[0].periods_reg.rdata[7]
+tb.test_harness.\user_peripheral.mc_alu_unit.genblk1[0].periods_reg.rdata[8]
+tb.test_harness.\user_peripheral.mc_alu_unit.genblk1[0].periods_reg.rdata[9]
+tb.test_harness.\user_peripheral.mc_alu_unit.genblk1[0].periods_reg.rdata[10]
+tb.test_harness.\user_peripheral.mc_alu_unit.genblk1[0].periods_reg.rdata[11]
+tb.test_harness.\user_peripheral.mc_alu_unit.genblk1[0].periods_reg.rdata[12]
+@200
+-
+@28
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.part
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.pred
+@200
+-
+@29
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[0]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[1]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[2]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[3]
+@28
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[4]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[5]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[6]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[7]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[8]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[9]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[10]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[11]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc_alt_frac[0]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc_alt_frac[1]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc_alt_frac[2]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc_alt_frac[3]
+[pattern_trace] 1
+[pattern_trace] 0

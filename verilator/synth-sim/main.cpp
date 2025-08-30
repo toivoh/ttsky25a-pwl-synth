@@ -47,14 +47,14 @@ const int log2_downsampling = 4;
 // 12: phase multipliers: (1, 2^n)
 // 13: common_sat
 // 15: orion pedal
-const int tune = 11;
+const int tune = 1;
+
+//const bool DETUNE_ON = false;
+const bool DETUNE_ON = true;
 
 
 const int fastest_sweep = 2;
 const int fastest_sweep_supported = 2;
-
-//const bool DETUNE_ON = false;
-const bool DETUNE_ON = true;
 
 
 const int PERIOD_ADDR = 0;

@@ -12,6 +12,8 @@ from tqv import TinyQV
 # The peripheral number is not used by the test harness.
 PERIPHERAL_NUM = 33
 
+INTERFACE_REGISTER_SHIFT = 4
+
 def read_pwm_out(dut):
 	data = dut.uo_out.value.integer
 	assert data == 0 or data == 255
@@ -41,11 +43,19 @@ def remap_addr(addr):
 	field = addr >> 2
 	return ((channel << 3) | field) << 1
 
+reg_bits = [13, 6, 8, 8, 8, 13, 13, 13, 12]
+
 async def reg_write(tqv, addr, value):
-	await tqv.write_hword_reg(remap_addr(addr), value)
+	if reg_bits[addr>>2] + INTERFACE_REGISTER_SHIFT > 16:
+		await tqv.write_word_reg(remap_addr(addr), value << INTERFACE_REGISTER_SHIFT)
+	else:
+		await tqv.write_hword_reg(remap_addr(addr), value << INTERFACE_REGISTER_SHIFT)
 
 async def reg_read(tqv, addr):
-	return await tqv.read_hword_reg(remap_addr(addr))
+	if reg_bits[addr>>2] + INTERFACE_REGISTER_SHIFT > 16:
+		return await tqv.read_word_reg(remap_addr(addr)) >> INTERFACE_REGISTER_SHIFT
+	else:
+		return await tqv.read_hword_reg(remap_addr(addr)) >> INTERFACE_REGISTER_SHIFT
 
 
 @cocotb.test()
@@ -68,8 +78,7 @@ async def test_project(dut):
 
 	dut._log.info("Test project behavior: PWL Synth")
 
-	nbits = [13, 6, 8, 8, 8, 7]
-
+	nbits = [13, 6, 8, 8, 8, 9]
 
 	dut._log.info("Check initial PWM output")
 	await ClockCycles(dut.clk, 100)

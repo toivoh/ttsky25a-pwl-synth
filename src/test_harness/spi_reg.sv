@@ -147,6 +147,10 @@ module spi_reg #(
   // Transaction buffer
   logic [REG_W-1:0] txn_buffer;
 
+  // Added to approximate TinyQV update behavior of data_in after a write: keep all bits for one cycle except data_in[3:0]
+  reg last_idle;
+  always_ff @(posedge clk) last_idle <= (state == STATE_IDLE);
+
   // Transaction Buffer
   always_ff @(negedge(rstb) or posedge(clk)) begin
     if (!rstb) begin
@@ -155,7 +159,10 @@ module spi_reg #(
       if (ena == 1'b1) begin
         case (state)
           STATE_IDLE : begin
-            txn_buffer <= '0;
+            //txn_buffer <= '0;
+            // Added to approximate TinyQV update behavior of data_in after a write: keep all bits for one cycle except data_in[3:0]
+            txn_buffer[3:0] <= '0;
+            if (last_idle) txn_buffer[REG_W-1:4] <= '0;
           end
           STATE_TX_LOAD : begin
             txn_buffer <= reg_data_i;
