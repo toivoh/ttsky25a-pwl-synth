@@ -45,11 +45,12 @@ const int log2_downsampling = 4;
 // 7: manual sweep slope, pwm_offset
 // 8: sweep slope, pwm_offset
 // 11: phase multipliers: (3, 2^n)
+// 17: like 11 but with 4 bit mode
 // 12: phase multipliers: (1, 2^n)
 // 13: common_sat
 // 15: orion pedal
 // 16: oscillator sync
-const int tune = 16;
+const int tune = 17;
 
 //const bool DETUNE_ON = false;
 const bool DETUNE_ON = true;
@@ -89,6 +90,7 @@ const int MODE_FLAG_PWL_OSC = 256;
 const int MODE_FLAGS_ORION = MODE_FLAG_NOISE | MODE_FLAG_PWL_OSC;
 const int MODE_FLAG_OSC_SYNC_EN = 1 << 9;
 const int MODE_FLAG_OSC_SYNC_SOFT = 1 << 10;
+const int MODE_FLAG_4_BIT = MODE_FLAG_OSC_SYNC_SOFT; // use without MODE_FLAG_OSC_SYNC_EN for 4 bit mode
 
 
 const int CFG_FLAG_STEREO_EN = 1;
@@ -304,7 +306,7 @@ int main(int argc, char** argv) {
 			amp_write(channel, 0); // Silence all channels
 			//mode_write(channel, 6);
 
-			if (tune != 11 && tune != 13 && tune != 14 && tune != 15 && tune != 16) {
+			if (tune != 11 && tune != 13 && tune != 14 && tune != 15 && tune != 16 && tune != 17) {
 				//int tri_offset = (1 << (BITS-1-2)) - (1 << (BITS-2));
 				//int tri_offset = (1 << (BITS-2-2)) - (1 << (BITS-2));
 				int params = (((tri_offset >> (BITS-2-8))&255)<<8) | ((slope_offset >> (BITS-3-4))*17);
@@ -376,7 +378,7 @@ int main(int argc, char** argv) {
 
 		modeparams_write(0, detune_exp, pwm_offset, slope0, slope1);
 */
-	} else if (tune == 11 || tune == 12 || tune == 13) {
+	} else if (tune == 11 || tune == 12 || tune == 13 || tune == 17) {
 		amp_write(0, 63);
 		period_write(0, 4, note_mantissas[0]); // C4
 
@@ -611,12 +613,13 @@ int main(int argc, char** argv) {
 					sweep_pwmoffs_slope_write(0, pwmoffs_sweep_rate, 0);
 				}
 			}
-		} else if (tune == 11 || tune == 12) {
+		} else if (tune == 11 || tune == 12 || tune == 17) {
 			int shr0 = LOG2_SAMPLES_PER_NOTE;
 			int t = (i >> shr0) & 3;
 			bool first = (i & ((1 << shr0) - 1)) == 0;
 			if (first) {
-				if (tune == 11) mode_write(0, 5, 0, 1 | (t<<1));
+				int flags = (tune == 17) ? MODE_FLAG_4_BIT : 0;
+				if (tune == 11 || tune == 17) mode_write(0, 5, flags, 1 | (t<<1));
 				else if (tune == 12) mode_write(0, 4 + (t>0), 0, 0 | (t<<1));
 			}
 		} else if (tune == 15) {

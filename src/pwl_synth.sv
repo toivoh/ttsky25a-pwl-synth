@@ -261,7 +261,7 @@ module pwls_ALU #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BITS=4, OUT_RSHIFT=3
 		input wire inv_src1_tri_en, // set inv_src1 = src2[BITS-1]
 		input wire inv_src1, inv_src2, src2_mask_msbs, carry_in,
 		input wire [BITS-1:0] src2_mask,
-		input wire sat_en, ext_sat_en, result_sext,
+		input wire sat_en, ext_sat_en, result_sext, result_mask_bottom,
 
 		output wire signed [BITS_E-1:0] result,
 		output wire cmp_result, delayed, equal, src2_pre_sign, carry_out
@@ -358,6 +358,7 @@ module pwls_ALU #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BITS=4, OUT_RSHIFT=3
 	always_comb begin
 		result1 = result0;
 		if (result_sext) result1[BITS-1] = result1[BITS-2];
+		if (result_mask_bottom) result1[BITS-1-1-4:0] = 0;
 	end
 	assign result = result1;
 
@@ -406,7 +407,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 		output wire [`PART_SEL_BITS-1:0] part_sel_out,
 		output wire [`DEST_SEL_BITS-1:0] dest_sel_out,
 		output wire replace_src2_with_amp_out, halve_amp_out,
-		output wire src2_sext_out, src2_sext_less_out, out_acc_frac_update_en_out, out_acc_frac_mask_out, inv_src2_tri_en_out, inv_src1_tri_en_out, orion_mask_en_out, result_sext_out,
+		output wire src2_sext_out, src2_sext_less_out, out_acc_frac_update_en_out, out_acc_frac_mask_out, inv_src2_tri_en_out, inv_src1_tri_en_out, orion_mask_en_out, result_sext_out, result_mask_bottom_out,
 		output wire reg_we_out, rmw_continued_out,
 		output wire sweep_sign_out
 	);
@@ -417,6 +418,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 	wire phase_factor_en = !cfg[`CFG_BIT_STEREO_POS_EN];
 	wire osc_sync_en   = channel_mode[`CHANNEL_MODE_BIT_OSC_SYNC_EN];
 	wire osc_sync_soft = channel_mode[`CHANNEL_MODE_BIT_OSC_SYNC_SOFT];
+	wire four_bit_mode_en = osc_sync_soft && !osc_sync_en;
 
 
 	wire [`WF_BITS-1:0] waveform;
@@ -506,7 +508,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 	reg [`PRED_SEL_BITS-1:0] pred_sel;
 	reg [`PART_SEL_BITS-1:0] part_sel;
 	reg replace_src2_with_amp, halve_amp;
-	reg src2_sext, src2_sext_less, out_acc_frac_update_en, out_acc_frac_mask, inv_src2_tri_en, inv_src1_tri_en, orion_mask_en, result_sext;
+	reg src2_sext, src2_sext_less, out_acc_frac_update_en, out_acc_frac_mask, inv_src2_tri_en, inv_src1_tri_en, orion_mask_en, result_sext, result_mask_bottom;
 	reg reg_we_if_oct_en, reg_we_only_if_part, rmw_continued;
 
 	always_comb begin
@@ -525,6 +527,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 		src2_sext_less = 0;
 		orion_mask_en = 0;
 		result_sext = 0;
+		result_mask_bottom = 0;
 		out_acc_frac_update_en = 1;
 		out_acc_frac_mask = 1;
 		inv_src2_tri_en = 0;
@@ -956,9 +959,16 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 				end
 `endif
 
+`ifdef USE_4_BIT_MODE
+				result_mask_bottom = four_bit_mode_en;
+`endif
+
 `ifdef USE_COMMON_SAT
 				out_acc_frac_update_en = 0;
-				if (common_sat && (sub_channel == 0)) dest_sel = `DEST_SEL_OUT_ACC;
+				if (common_sat && (sub_channel == 0)) begin
+					dest_sel = `DEST_SEL_OUT_ACC;
+					result_mask_bottom = 0;
+				end
 `endif
 			end
 			`STATE_AMP_CMP: begin
@@ -1096,6 +1106,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 	named_buffer nb_src2_sext(.in(src2_sext), .out(src2_sext_out));
 	named_buffer nb_src2_sext_less(.in(src2_sext_less), .out(src2_sext_less_out));
 	named_buffer nb_result_sext(.in(result_sext), .out(result_sext_out));
+	named_buffer nb_result_mask_bottom(.in(result_mask_bottom), .out(result_mask_bottom_out));
 	named_buffer nb_orion_mask_en(.in(orion_mask_en), .out(orion_mask_en_out));
 	named_buffer nb_out_acc_frac_update_en(.in(out_acc_frac_update_en), .out(out_acc_frac_update_en_out));
 	named_buffer nb_out_acc_frac_mask(.in(out_acc_frac_mask), .out(out_acc_frac_mask_out));
@@ -1317,7 +1328,7 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 	wire [1:0] src2_forward_extra_bit;
 	wire pred_we, part_we, lfsr_extra_bits_we;
 	wire [`DEST_SEL_BITS-1:0] dest_sel;
-	wire replace_src2_with_amp, src2_sext, src2_sext_less, out_acc_frac_update_en, out_acc_frac_mask, inv_src2_tri_en, inv_src1_tri_en, orion_mask_en, result_sext;
+	wire replace_src2_with_amp, src2_sext, src2_sext_less, out_acc_frac_update_en, out_acc_frac_mask, inv_src2_tri_en, inv_src1_tri_en, orion_mask_en, result_sext, result_mask_bottom;
 	wire [`PRED_SEL_BITS-1:0] pred_sel;
 	wire [`PART_SEL_BITS-1:0] part_sel;
 	wire sweep_sign;
@@ -1384,7 +1395,7 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 		.dest_sel_out(dest_sel),
 		.pred_sel_out(pred_sel), .part_sel_out(part_sel),
 		.replace_src2_with_amp_out(replace_src2_with_amp), .halve_amp_out(halve_amp), .src2_sext_out(src2_sext), .src2_sext_less_out(src2_sext_less),
-		.out_acc_frac_update_en_out(out_acc_frac_update_en), .out_acc_frac_mask_out(out_acc_frac_mask), .orion_mask_en_out(orion_mask_en), .result_sext_out(result_sext),
+		.out_acc_frac_update_en_out(out_acc_frac_update_en), .out_acc_frac_mask_out(out_acc_frac_mask), .orion_mask_en_out(orion_mask_en), .result_sext_out(result_sext), .result_mask_bottom_out(result_mask_bottom),
 		.inv_src2_tri_en_out(inv_src2_tri_en), .inv_src1_tri_en_out(inv_src1_tri_en), .reg_we_out(reg_we), .rmw_continued_out(rmw_continued), .sweep_sign_out(sweep_sign)
 	);
 
@@ -1606,7 +1617,7 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 	pwls_ALU #(.BITS(BITS), .BITS_E(BITS_E), .SHIFT_COUNT_BITS(SHIFT_COUNT_BITS), .OUT_RSHIFT(OUT_RSHIFT), .REV_PHASE_SHR(REV_PHASE_SHR), .AMP_BITS(AMP_BITS)) alu(
 		.clk(clk), .rst_n(rst_n),
 		.src1_in(src1_in), .src2_in(src2_in), .src2_rot(src2_rot), .src2_forward_extra_bit(src2_forward_extra_bit), .src2_lshift(src2_lshift + src2_lshift_extra),
-		.src2_sext(src2_sext), .src2_sext_less(src2_sext_less), .inv_src2_tri_en(inv_src2_tri_en), .inv_src1_tri_en(inv_src1_tri_en), .src2_mask(src2_mask), .result_sext(result_sext),
+		.src2_sext(src2_sext), .src2_sext_less(src2_sext_less), .inv_src2_tri_en(inv_src2_tri_en), .inv_src1_tri_en(inv_src1_tri_en), .src2_mask(src2_mask), .result_sext(result_sext), .result_mask_bottom(result_mask_bottom),
 		.src2_mask_msbs(src2_mask_msbs), .inv_src1(inv_src1), .inv_src2(inv_src2), .carry_in(carry_in), .sat_en(sat_en), .ext_sat_en(ext_sat_en),
 		.result(result), .cmp_result(cmp_result), .delayed(delayed_simple), .equal(equal), .src2_pre_sign(src2_pre_sign), .carry_out(carry_out)
 	);
