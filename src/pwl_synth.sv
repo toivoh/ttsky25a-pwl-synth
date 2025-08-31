@@ -136,8 +136,21 @@ module tqvp_toivoh_pwl_synth #(parameter BITS=12, BITS_E=13, OCT_BITS=3, DETUNE_
 	// Accept all sizes of writes, treat them the same.
 	// The user shouldn't use 8 bit writes to registers with more than 8 bits
 	wire reg_we = (data_write_n != 2'b11);
-	wire [`REG_BITS-1:0] reg_wdata = data_in >> `INTERFACE_REGISTER_SHIFT;
 
+
+	wire [`REG_BITS-1:0] reg_wdata0 = data_in >> `INTERFACE_REGISTER_SHIFT;
+`ifdef USE_ACTUAL_LSB_DELAY_REGS
+	reg [`NUM_VOLATILE_LSBS-1:0] reg_wdata_lsbs;
+	always_ff @(posedge clk) reg_wdata_lsbs <= reg_wdata0[`NUM_VOLATILE_LSBS-1:0];
+`else
+	wire [`NUM_VOLATILE_LSBS-1:0] reg_wdata_lsbs = reg_wdata0[`NUM_VOLATILE_LSBS-1:0];
+`endif
+	// not a register
+	reg [`REG_BITS-1:0] reg_wdata;
+	always_comb begin
+		reg_wdata = reg_wdata0;
+		reg_wdata[`NUM_VOLATILE_LSBS-1:0] = reg_wdata_lsbs[`NUM_VOLATILE_LSBS-1:0];
+	end
 
 
 	wire [`REG_BITS-1:0] reg_rdata;

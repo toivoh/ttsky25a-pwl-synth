@@ -9,6 +9,8 @@
 `endif
 
 `define USE_PHASE_LATCHES
+`define USE_P_LATCHES_ONLY
+`define USE_LSB_DELAY_REGS
 `define USE_OCT_COUNTER_LATCHES
 `define USE_OCT_COUNTER_READ // requires USE_OCT_COUNTER_LATCHES and USE_NEW_READ to work
 `define USE_NEW_READ
@@ -209,7 +211,6 @@
 
 `define PIPELINE_CURR_CHANNEL
 
-`define USE_P_LATCHES_ONLY
 
 `ifndef PURE_RTL
 //`define NAMED_BUF_EN
@@ -223,12 +224,19 @@
 `ifndef SCL_sg13g2_stdcell
 `define SCL_sky130_fd_sc_hd
 `endif
+`ifdef USE_LSB_DELAY_REGS
+`define USE_ACTUAL_LSB_DELAY_REGS
+`endif
 `endif
 
 
-`ifdef USE_P_LATCHES_ONLY
 // Need at least 4, since data_in[3:0] becomes invalid after one cycle, when the P latch reds it. Could use 4, 8, or 16.
-`define INTERFACE_REGISTER_SHIFT 4
-`else
+`define NUM_VOLATILE_LSBS 4
+
+
 `define INTERFACE_REGISTER_SHIFT 0
+`ifdef USE_P_LATCHES_ONLY
+`ifndef USE_LSB_DELAY_REGS
+`define INTERFACE_REGISTER_SHIFT `NUM_VOLATILE_LSBS
+`endif
 `endif

@@ -12,7 +12,7 @@ from tqv import TinyQV
 # The peripheral number is not used by the test harness.
 PERIPHERAL_NUM = 33
 
-INTERFACE_REGISTER_SHIFT = 4
+INTERFACE_REGISTER_SHIFT = 0
 
 def read_pwm_out(dut):
 	data = dut.uo_out.value.integer
