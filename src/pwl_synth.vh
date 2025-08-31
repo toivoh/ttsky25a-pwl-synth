@@ -10,6 +10,7 @@
 
 `define USE_PHASE_LATCHES
 `define USE_OCT_COUNTER_LATCHES
+`define USE_OCT_COUNTER_READ // requires USE_OCT_COUNTER_LATCHES and USE_NEW_READ to work
 `define USE_NEW_READ
 
 `define USE_SLOPE_EXP_REGS
@@ -22,7 +23,10 @@
 `define USE_PWL_OSC
 `define USE_ORION_WAVE
 `define USE_ORION_MASK
+`define USE_ORION_WAVE_PWM
 `define USE_STEREO
+`define USE_STEREO_POS
+`define USE_OSC_SYNC // currently only implemented to work with USE_P_LATCHES_ONLY, need write back condition (override oct_enable) for next step otherwise
 
 //`define USE_MORE_REG_RESETS
 
@@ -43,7 +47,7 @@
 
 `ifdef USE_NEW_REGMAP
 //	`define CHANNEL_MODE_BITS 4
-	`define CHANNEL_MODE_BITS 9
+	`define CHANNEL_MODE_BITS 11
 	`ifdef USE_NEW_REGMAP_B
 		`define REGS_PER_CHANNEL 8
 		`define REG_BITS 13 // Could be 13? If the registers don't grow too much
@@ -68,8 +72,9 @@
 	`define REG_ADDR_BITS 5
 `endif
 
-
 `define CFG_BIT_STEREO_EN 0
+`define CFG_BIT_STEREO_POS_EN 1
+`define CFG_BITS 2
 
 
 // 0-2: detune_exp
@@ -80,6 +85,8 @@
 `define CHANNEL_MODE_BIT_X2N1 6
 `define CHANNEL_MODE_BIT_COMMON_SAT 7
 `define CHANNEL_MODE_BIT_PWL_OSC 8
+`define CHANNEL_MODE_BIT_OSC_SYNC_EN 9
+`define CHANNEL_MODE_BIT_OSC_SYNC_SOFT 10
 
 
 `define WF_BITS 2
@@ -183,6 +190,7 @@
 `define TST_ADDR_LFSR_EXTRA_BITS 4
 `define TST_ADDR_OCT_COUNTER 5
 `define TST_ADDR_OUT_ACC_ALT_FRAC 6
+`define TST_ADDR_LAST_OSC_WRAPPED 7
 
 
 

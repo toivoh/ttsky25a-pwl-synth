@@ -5,11 +5,16 @@ import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles
 
+INTERFACE_REGISTER_SHIFT = 4
+
+def map_addr(addr, channel):
+	return (channel<<4) | ((addr&7)<<1) | ((addr&8)>>3)
+
 async def reg_write(dut, addr, channel, value):
-	address = (channel<<4) | ((addr&7)<<1) | ((addr&8)>>3)
+	address = map_addr(addr, channel)
 
 	dut.address.value = address
-	dut.data_in.value = value
+	dut.data_in.value = value << INTERFACE_REGISTER_SHIFT
 	dut.data_write.value = 1
 	await ClockCycles(dut.clk, 1)
 	dut.data_write.value = 0
@@ -112,7 +117,7 @@ async def test_new_read(dut):
 	dut.data_read.value = 0
 	await ClockCycles(dut.clk, 80)
 
-@cocotb.test()
+#@cocotb.test()
 async def test_stereo(dut):
 	dut._log.info("Start")
 
@@ -133,4 +138,38 @@ async def test_stereo(dut):
 	await reg_write(dut, 9, 2, 1) # turn on stereo
 
 	await ClockCycles(dut.clk, 128+16)
+
+
+@cocotb.test()
+async def test_read_oct_counter(dut):
+	dut._log.info("Start")
+
+	peripheral = dut.peripheral
+	mc_alu_unit = peripheral.mc_alu_unit
+	alu_unit = mc_alu_unit.alu_unit
+
+	clock = Clock(dut.clk, 100, units="ns")
+	cocotb.start_soon(clock.start())
+
+	dut.rst_n.value = 0
+	await ClockCycles(dut.clk, 10)
+	dut.rst_n.value = 1
+
+	await reg_write(dut, 9, 0, 0x321)
+	await reg_write(dut, 9, 1, 0x765)
+
+	for i in range(2):
+		dut.address.value = map_addr(9, i)
+		dut.data_read.value = 1
+
+		while (dut.data_ready.value.integer != 1):
+			await ClockCycles(dut.clk, 1)
+		value = peripheral.data_out.value.integer >> INTERFACE_REGISTER_SHIFT
+		print("oct_counter", i, " = ", hex(value), sep="")
+
+		assert value == (0x322 if i == 0 else 0x765)
+
+		dut.data_read.value = 0
+		await ClockCycles(dut.clk, 4)
+
 

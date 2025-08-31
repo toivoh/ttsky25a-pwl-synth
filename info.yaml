@@ -25,6 +25,7 @@ project:
     - "test_harness/synchronizer.sv"
     - "pwl_synth.sv"
     - "pwl_synth_memory.sv"
+#    - "alt_project.sv"
 
 
 # The pinout of your project. Leave unused pins blank. DO NOT delete or add any pins.

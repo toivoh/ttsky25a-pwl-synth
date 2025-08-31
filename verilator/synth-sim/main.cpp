@@ -14,6 +14,7 @@
 #include <verilated_vcd_c.h>
 
 //#define STEREO_ON
+//#define STEREO_POS_ON // might have an effect even if stereo is off, affecting the subchannels
 
 //#define TRACE_ON
 
@@ -47,7 +48,8 @@ const int log2_downsampling = 4;
 // 12: phase multipliers: (1, 2^n)
 // 13: common_sat
 // 15: orion pedal
-const int tune = 1;
+// 16: oscillator sync
+const int tune = 16;
 
 //const bool DETUNE_ON = false;
 const bool DETUNE_ON = true;
@@ -78,15 +80,19 @@ const int SWEEP_ADDR = 4;
 const int MODE_BIT_DETUNE0 = 0;
 const int MODE_BIT_NOISE = 3;
 const int MODE_FLAG_NOISE = 1 << MODE_BIT_NOISE;
-const int MODE_FLAG_3X = 16;
+const int MODE_BIT_3X = 4;
+const int MODE_FLAG_3X = 1 << MODE_BIT_3X;
 const int MODE_BIT_X2N0 = 5;
 const int MODE_BIT_X2N1 = 6;
 const int MODE_FLAG_COMMON_SAT = 128;
 const int MODE_FLAG_PWL_OSC = 256;
 const int MODE_FLAGS_ORION = MODE_FLAG_NOISE | MODE_FLAG_PWL_OSC;
+const int MODE_FLAG_OSC_SYNC_EN = 1 << 9;
+const int MODE_FLAG_OSC_SYNC_SOFT = 1 << 10;
 
 
 const int CFG_FLAG_STEREO_EN = 1;
+const int CFG_FLAG_STEREO_POS_EN = 2;
 
 
 #ifdef DOWNSAMPLE
@@ -175,8 +181,8 @@ void cfg_write(int cfg) { reg_write(OC_ADDR, 2, cfg); }
 #ifdef USE_NEW_REGMAP_B
 
 // 8 bit pwm_offset and slopes
-void modeparams_write(int channel, int detune_exp, int pwm_offset, int slope0, int slope1) {
-	reg_write(MODE_ADDR, channel, ((detune_exp*DETUNE_ON)&7)); // TODO: lfsr_en?
+void modeparams_write(int channel, int detune_exp, int pwm_offset, int slope0, int slope1, int flags=0) {
+	reg_write(MODE_ADDR, channel, ((detune_exp*DETUNE_ON)&7) | flags); // TODO: lfsr_en?
 	reg_write(PWM_OFFSET_ADDR, channel, pwm_offset);
 	reg_write(SLOPE0_ADDR, channel, slope0);
 	reg_write(SLOPE1_ADDR, channel, slope1);
@@ -263,7 +269,6 @@ int main(int argc, char** argv) {
 	const int LOG2_SAMPLES_PER_NOTE = 15;
 
 	int num_samples = NUM_NOTES << LOG2_SAMPLES_PER_NOTE;
-	//num_samples = 10; // !!!
 #ifdef TRACE_ON
 	num_samples = 16;
 #endif
@@ -280,9 +285,14 @@ int main(int argc, char** argv) {
 // Tune setup
 // ==========
 
+	int cfg = 0;
 #ifdef STEREO_ON
-	cfg_write(CFG_FLAG_STEREO_EN);
+	cfg |= CFG_FLAG_STEREO_EN;
 #endif
+#ifdef STEREO_POS_ON
+	cfg |= CFG_FLAG_STEREO_POS_EN;
+#endif
+	if (cfg != 0) cfg_write(cfg);
 
 	int tri_offset = (1 << (BITS-2-2)); // full range is 0 to 2^(BITS-2)-1
 	int slope_offset = 1 << (BITS - 4); // full range is 0 to 2^(BITS-3)-1
@@ -294,7 +304,7 @@ int main(int argc, char** argv) {
 			amp_write(channel, 0); // Silence all channels
 			//mode_write(channel, 6);
 
-			if (tune != 11 && tune != 13 && tune != 14 && tune != 15) {
+			if (tune != 11 && tune != 13 && tune != 14 && tune != 15 && tune != 16) {
 				//int tri_offset = (1 << (BITS-1-2)) - (1 << (BITS-2));
 				//int tri_offset = (1 << (BITS-2-2)) - (1 << (BITS-2));
 				int params = (((tri_offset >> (BITS-2-8))&255)<<8) | ((slope_offset >> (BITS-3-4))*17);
@@ -326,8 +336,14 @@ int main(int argc, char** argv) {
 			int slope_exp0 = channel*2;
 			int slope_exp1 = channel + 3;
 
+			int flags = 0;
+#ifdef STEREO_POS_ON
+			const int stereo_pos[] = {0,4,1,3};
+			flags |= stereo_pos[channel] << MODE_BIT_3X;
+#endif
+
 			//reg_write(MODE_ADDR, channel, detune_exp | (slope_exp0 << 4) | (slope_exp1 << 8));
-			modeparams_write(channel, detune_exp, pwm_offset_default, (slope_exp0 << 4) | (slope_default&15), (slope_exp1 << 4) | (slope_default&15));
+			modeparams_write(channel, detune_exp, pwm_offset_default, (slope_exp0 << 4) | (slope_default&15), (slope_exp1 << 4) | (slope_default&15), flags);
 		}
 	} else if (tune == 2 || tune == 10) {
 		main_channel = 3;
@@ -377,6 +393,11 @@ int main(int argc, char** argv) {
 		//int detune_exp = 4;
 		mode_write(0, detune_exp, MODE_FLAGS_ORION);
 		reg_write(SLOPE1_ADDR, 0, 0b11001010);
+		reg_write(PWM_OFFSET_ADDR, 0, 0xff); // To defeat the PWM offset, -1 is as close to zero as we get
+	} else if (tune == 16) {
+		amp_write(0, 63);
+		amp_write(1, 63);
+		period_write(0, 4, note_mantissas[0]); // C4
 	}
 
 // Main loop
@@ -611,6 +632,29 @@ int main(int argc, char** argv) {
 			offset += ((t >>  9)&1) << 0;
 			int slope = offset >> 5;
 			reg_write(SLOPE0_ADDR, 0, slope);
+		} else if (tune == 16) {
+			int shr0 = LOG2_SAMPLES_PER_NOTE+1;
+			int t = (i >> shr0) & 1;
+			bool first = (i & ((1 << shr0) - 1)) == 0;
+
+			if (first) {
+				period_write(1, 5, note_mantissas[5]); // F3
+				int detune_exp = 0;
+				//int detune_exp = 4;
+
+				int flags0 = 0;
+				int flags1 = 0;
+#ifdef STEREO_POS_ON
+				flags0 |= 0 << MODE_BIT_3X;
+				flags1 |= 4 << MODE_BIT_3X;
+#endif
+
+				mode_write(0, detune_exp, flags0);
+				mode_write(1, detune_exp, flags1 | MODE_FLAG_OSC_SYNC_EN | (t == 0 ? MODE_FLAG_OSC_SYNC_SOFT : 0));
+
+				int sweep_rate = 2+LOG2_SAMPLES_PER_NOTE-1+4-12 - 1;
+				sweep_period_amp_write(1, sweep_rate, 1);
+			}
 		}
 	}
 

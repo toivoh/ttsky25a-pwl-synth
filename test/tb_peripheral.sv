@@ -20,12 +20,14 @@ module tb_peripheral #(parameter BITS=12, OCT_BITS=3, DETUNE_EXP_BITS=3, SLOPE_E
 	reg data_write = 0;
 	reg data_read = 0;
 
+	wire data_ready;
 	tqvp_toivoh_pwl_synth peripheral(
 		.clk(clk), .rst_n(rst_n),
 		.ui_in(0),
 		.address(address), .data_in(data_in),
 		.data_write_n(data_write ? 2'b01 : 11),
-		.data_read_n( data_read  ? 2'b01 : 11)
+		.data_read_n( data_read  ? 2'b01 : 11),
+		.data_ready(data_ready)
 	);
 
 	wire [BITS-1:0] phase0 = peripheral.mc_alu_unit.phases[0];
