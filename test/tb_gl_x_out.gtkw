@@ -1,0 +1,79 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Mon Sep  1 04:31:49 2025
+[*]
+[dumpfile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb.vcd"
+[dumpfile_mtime] "Mon Sep  1 04:27:18 2025"
+[dumpfile_size] 65669137
+[savefile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_gl_x_out.gtkw"
+[timestart] 0
+[size] 1986 872
+[pos] -1 -1
+*-21.000000 1701000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb.
+[sst_width] 297
+[signals_width] 574
+[sst_expanded] 1
+[sst_vpaned_height] 253
+@28
+tb.rst_n
+tb.clk
+@200
+-
+@22
+tb.uo_out[7:0]
+@28
+tb.test_harness.\user_peripheral.mc_alu_unit.pwm_out
+tb.test_harness.\user_peripheral.mc_alu_unit.pwm_out_right
+@200
+-
+@28
+tb.test_harness.\user_peripheral.mc_alu_unit.pwm_counter[0]
+tb.test_harness.\user_peripheral.mc_alu_unit.pwm_counter[1]
+tb.test_harness.\user_peripheral.mc_alu_unit.pwm_counter[2]
+tb.test_harness.\user_peripheral.mc_alu_unit.pwm_counter[3]
+tb.test_harness.\user_peripheral.mc_alu_unit.pwm_counter[4]
+tb.test_harness.\user_peripheral.mc_alu_unit.pwm_counter[5]
+tb.test_harness.\user_peripheral.mc_alu_unit.pwm_counter[6]
+@200
+-
+@28
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.state_decoder_late.sub_channel
+tb.test_harness.\user_peripheral.mc_alu_unit.term_index[1]
+tb.test_harness.\user_peripheral.mc_alu_unit.term_index[2]
+@200
+-
+@28
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.state[0]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.state[1]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.state[2]
+@200
+-
+@28
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[0]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[1]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[2]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[3]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[4]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[5]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[6]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[7]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[8]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[9]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[10]
+tb.test_harness.\user_peripheral.mc_alu_unit.alu_unit.out_acc[11]
+@200
+-
+@28
+tb.test_harness.\user_peripheral.data_out[8]
+tb.test_harness.\user_peripheral.data_out[9]
+tb.test_harness.\user_peripheral.data_out[10]
+tb.test_harness.\user_peripheral.data_out[11]
+tb.test_harness.\user_peripheral.data_out[12]
+tb.test_harness.\user_peripheral.data_out[13]
+tb.test_harness.\user_peripheral.data_out[14]
+tb.test_harness.\user_peripheral.data_out[15]
+@29
+tb.test_harness.\user_peripheral.data_out[16]
+[pattern_trace] 1
+[pattern_trace] 0

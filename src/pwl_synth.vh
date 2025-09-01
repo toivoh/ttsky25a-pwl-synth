@@ -32,7 +32,7 @@
 `define USE_OSC_SYNC // currently only implemented to work with USE_P_LATCHES_ONLY, need write back condition (override oct_enable) for next step otherwise
 `define USE_4_BIT_MODE // only works together with USE_OSC_SYNC
 
-//`define USE_MORE_REG_RESETS
+`define USE_MORE_REG_RESETS
 
 
 `ifdef USE_STEREO
