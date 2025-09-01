@@ -14,7 +14,7 @@
 `define USE_OCT_COUNTER_LATCHES
 `define USE_OCT_COUNTER_READ // requires USE_OCT_COUNTER_LATCHES and USE_NEW_READ to work
 `define USE_NEW_READ
-`define USE_OUTPUT_BUFFERS
+//`define USE_OUTPUT_BUFFERS
 
 `define USE_SLOPE_EXP_REGS
 `define USE_PARAMS_REGS
@@ -32,7 +32,7 @@
 `define USE_OSC_SYNC // currently only implemented to work with USE_P_LATCHES_ONLY, need write back condition (override oct_enable) for next step otherwise
 `define USE_4_BIT_MODE // only works together with USE_OSC_SYNC
 
-//`define USE_MORE_REG_RESETS
+`define USE_MORE_REG_RESETS
 
 
 `ifdef USE_STEREO
