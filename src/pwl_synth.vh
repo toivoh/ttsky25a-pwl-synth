@@ -10,10 +10,11 @@
 
 `define USE_PHASE_LATCHES
 `define USE_P_LATCHES_ONLY
-`define USE_LSB_DELAY_REGS
+//`define USE_LSB_DELAY_REGS
 `define USE_OCT_COUNTER_LATCHES
 `define USE_OCT_COUNTER_READ // requires USE_OCT_COUNTER_LATCHES and USE_NEW_READ to work
 `define USE_NEW_READ
+`define USE_OUTPUT_BUFFERS
 
 `define USE_SLOPE_EXP_REGS
 `define USE_PARAMS_REGS
@@ -219,11 +220,13 @@
 `endif
 
 
-// Define SCL_sky130_fd_sc_hd if not pure RTL and not IHP. Shouldn't be needed, but seems to be needed for my local runs at least.
 `ifndef PURE_RTL
+/*
 `ifndef SCL_sg13g2_stdcell
+// Define SCL_sky130_fd_sc_hd if not pure RTL and not IHP. Shouldn't be needed, but seems to be needed for my local runs at least.
 `define SCL_sky130_fd_sc_hd
 `endif
+*/
 `ifdef USE_LSB_DELAY_REGS
 `define USE_ACTUAL_LSB_DELAY_REGS
 `endif
@@ -234,9 +237,14 @@
 `define NUM_VOLATILE_LSBS 4
 
 
-`define INTERFACE_REGISTER_SHIFT 0
 `ifdef USE_P_LATCHES_ONLY
 `ifndef USE_LSB_DELAY_REGS
-`define INTERFACE_REGISTER_SHIFT `NUM_VOLATILE_LSBS
+`define USE_INTERFACE_REGISTER_SHIFT
 `endif
+`endif
+
+`ifdef USE_INTERFACE_REGISTER_SHIFT
+`define INTERFACE_REGISTER_SHIFT `NUM_VOLATILE_LSBS
+`else
+`define INTERFACE_REGISTER_SHIFT 0
 `endif

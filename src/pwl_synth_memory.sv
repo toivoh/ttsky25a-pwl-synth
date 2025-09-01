@@ -25,7 +25,8 @@ module pwls_shared_data #(parameter BITS=16) (
 	wire [BITS-1:0] latch_out;
 	generate
 		for (i = 0; i < BITS; i++) begin
-`ifdef SCL_sky130_fd_sc_hd
+//`ifdef SCL_sky130_fd_sc_hd
+`ifndef SCL_sg13g2_stdcell
 			sky130_fd_sc_hd__dlxtn_1 n_latch(.GATE_N(clk), .D(data_in[i]), .Q(latch_out[i]));
 //	`ifdef USE_EXTRA_DELAY_BUFFERS
 			wire d1;
@@ -55,7 +56,8 @@ module pwls_register #(parameter BITS=16) (
 	genvar i;
 
 	wire gclk;
-`ifdef SCL_sky130_fd_sc_hd
+//`ifdef SCL_sky130_fd_sc_hd
+`ifndef SCL_sg13g2_stdcell
 	sky130_fd_sc_hd__dlclkp_1 clock_gate(.CLK(clk), .GATE(we || !rst_n), .GCLK(gclk));
 `endif
 `ifdef SCL_sg13g2_stdcell
@@ -64,7 +66,8 @@ module pwls_register #(parameter BITS=16) (
 
 	generate
 		for (i = 0; i < BITS; i++) begin
-`ifdef SCL_sky130_fd_sc_hd
+//`ifdef SCL_sky130_fd_sc_hd
+`ifndef SCL_sg13g2_stdcell
 			sky130_fd_sc_hd__dlxtp_1 p_latch(.GATE(gclk), .D(wdata[i]), .Q(rdata[i]));
 `endif
 `ifdef SCL_sg13g2_stdcell

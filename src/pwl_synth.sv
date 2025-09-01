@@ -190,8 +190,15 @@ module tqvp_toivoh_pwl_synth #(parameter BITS=12, BITS_E=13, OCT_BITS=3, DETUNE_
 		.pwm_out(pwm_out), .pwm_out_right(pwm_out_right)
 	);
 
+`ifdef USE_OUTPUT_BUFFERS
+	reg [1:0] pwm_outs;
+	always_ff @(posedge clk) pwm_outs <= {pwm_out_right, pwm_out};
+`else
+	wire [1:0] pwm_outs = {pwm_out_right, pwm_out};
+`endif
+
 	//assign uo_out = pwm_out ? '1 : 0;
-	assign uo_out = {pwm_out_right, pwm_out, pwm_out_right, pwm_out, pwm_out_right, pwm_out, pwm_out_right, pwm_out};
+	assign uo_out = {4{pwm_outs}};
 
 	assign data_out = reg_rdata << `INTERFACE_REGISTER_SHIFT;
 	assign user_interrupt = 1'b0;
@@ -2482,7 +2489,7 @@ module pwls_multichannel_ALU_unit #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BI
 
 `ifdef USE_STEREO
 	wire stereo_side = (term_index_eff[0] || term_index_eff[3]) ^ sample_out_acc;
-	wire inactive_pwm = term_index[2] || term_index[3] | sample_out_acc; // should go from high to low during each period that stereo_side is stable
+	wire inactive_pwm = !(term_index[2] || term_index[3] | sample_out_acc); // should go from high to low during each period that stereo_side is stable
 
 	assign pwm_out       = (!stereo_en || stereo_side == 0) ? pwm_out_mono : inactive_pwm;
 	assign pwm_out_right = (!stereo_en || stereo_side == 1) ? pwm_out_mono : inactive_pwm;
