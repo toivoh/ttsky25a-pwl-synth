@@ -1975,7 +1975,20 @@ module pwls_multichannel_ALU_unit #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BI
 
 	wire [PERIOD_BITS-1:0] periods[NUM_CHANNELS];
 	wire [AMP_BITS-1:0] amps[NUM_CHANNELS];
+	wire [`CHANNEL_MODE_BITS-1:0] modes0[NUM_CHANNELS];
 	wire [`CHANNEL_MODE_BITS-1:0] modes[NUM_CHANNELS];
+
+`ifdef USE_OSC_SYNC_ONLY_FOR_SOME_CHANNELS
+	assign modes[0] = modes0[0];
+	assign modes[1] = modes0[1] & ~`CHANNEL_MODE_FLAGS_OSC_SYNC_MASK;
+	assign modes[2] = modes0[2];
+	assign modes[3] = modes0[3];
+`else
+	assign modes[0] = modes0[0];
+	assign modes[1] = modes0[1];
+	assign modes[2] = modes0[2];
+	assign modes[3] = modes0[3];
+`endif
 
 `ifdef USE_NEW_REGMAP
 	// Both slope and pwm_offset are limited to 8 bits; seems to sound fine
@@ -2018,7 +2031,7 @@ module pwls_multichannel_ALU_unit #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BI
 			pwls_register #(.BITS(8))                  pwmoffs_reg(.clk(clk), .rst_n(rst_n), .we(16+i == reg_waddr_eff && reg_we_eff), .wdata(reg_wdata2), .next_wdata(reg_wdata_eff_next), .rdata(pwm_offsets[i]));
 
 
-			pwls_register #(.BITS(`CHANNEL_MODE_BITS)) modes_reg(  .clk(clk), .rst_n(rst_n), .we(20+i == reg_waddr_eff && reg_cfg_we), .wdata(reg_wdata2), .next_wdata(reg_wdata_eff_next), .rdata(modes[i]));
+			pwls_register #(.BITS(`CHANNEL_MODE_BITS)) modes_reg(  .clk(clk), .rst_n(rst_n), .we(20+i == reg_waddr_eff && reg_cfg_we), .wdata(reg_wdata2), .next_wdata(reg_wdata_eff_next), .rdata(modes0[i]));
 
 `ifdef USE_NEW_REGMAP_B
 			pwls_register #(.BITS(16))                 sweep0_reg( .clk(clk), .rst_n(rst_n), .we(24+i == reg_waddr_eff && reg_cfg_we), .wdata(reg_wdata2), .next_wdata(reg_wdata_eff_next), .rdata(sweeps0[i]));
@@ -2041,7 +2054,7 @@ module pwls_multichannel_ALU_unit #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BI
 			// Allow register writes even when en is low
 			pwls_register #(.BITS(PERIOD_BITS))        periods_reg(.clk(clk), .rst_n(rst_n), .we( 0+i == reg_waddr_eff && reg_we_eff), .wdata(reg_wdata2), .next_wdata(reg_wdata_eff_next), .rdata(periods[i]));
 			pwls_register #(.BITS(AMP_BITS))           amps_reg(   .clk(clk), .rst_n(rst_n), .we( 4+i == reg_waddr_eff && reg_we_eff), .wdata(reg_wdata2), .next_wdata(reg_wdata_eff_next), .rdata(amps[i]));
-			pwls_register #(.BITS(`CHANNEL_MODE_BITS)) modes_reg(  .clk(clk), .rst_n(rst_n), .we( 8+i == reg_waddr_eff && reg_we_eff), .wdata(reg_wdata2), .next_wdata(reg_wdata_eff_next), .rdata(modes[i]));
+			pwls_register #(.BITS(`CHANNEL_MODE_BITS)) modes_reg(  .clk(clk), .rst_n(rst_n), .we( 8+i == reg_waddr_eff && reg_we_eff), .wdata(reg_wdata2), .next_wdata(reg_wdata_eff_next), .rdata(modes0[i]));
 `ifdef USE_PARAMS_REGS
 			pwls_register #(.BITS(16))                 params_reg( .clk(clk), .rst_n(rst_n), .we(12+i == reg_waddr_eff && reg_we_eff), .wdata(reg_wdata2), .next_wdata(reg_wdata_eff_next), .rdata(params[i]));
 `endif
