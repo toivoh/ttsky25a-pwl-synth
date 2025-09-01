@@ -1,0 +1,114 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Mon Sep  1 14:37:09 2025
+[*]
+[dumpfile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_peripheral.vcd"
+[dumpfile_mtime] "Mon Sep  1 14:30:35 2025"
+[dumpfile_size] 3123015
+[savefile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_peripheral_pwm.gtkw"
+[timestart] 0
+[size] 2689 1261
+[pos] -1 -1
+*-19.000000 4173000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb_peripheral.
+[treeopen] tb_peripheral.peripheral.
+[treeopen] tb_peripheral.peripheral.mc_alu_unit.
+[treeopen] tb_peripheral.peripheral.mc_alu_unit.alu_unit.
+[sst_width] 297
+[signals_width] 243
+[sst_expanded] 1
+[sst_vpaned_height] 388
+@28
+tb_peripheral.rst_n
+tb_peripheral.clk
+@200
+-
+@22
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.acc[12:0]
+tb_peripheral.peripheral.data_out[31:0]
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.out_acc[11:0]
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.out_acc_alt_frac[3:0]
+@28
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.pred
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.part
+@200
+-
+@28
+tb_peripheral.data_read
+tb_peripheral.data_write
+@421
+tb_peripheral.en_counter
+@22
+tb_peripheral.address[5:0]
+tb_peripheral.data_in[31:0]
+@28
+tb_peripheral.peripheral.en
+@200
+-
+@28
+tb_peripheral.peripheral.mc_alu_unit.extra_term
+@22
+tb_peripheral.peripheral.mc_alu_unit.term_index[3:0]
+@28
+tb_peripheral.peripheral.mc_alu_unit.state[2:0]
+@200
+-
+@28
+tb_peripheral.peripheral.mc_alu_unit.en_eff
+tb_peripheral.peripheral.mc_alu_unit.reg_we
+tb_peripheral.peripheral.mc_alu_unit.reg_we_internal
+@200
+-
+@22
+tb_peripheral.phase0[11:0]
+tb_peripheral.pwm_offset0[7:0]
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.amp_external[9:0]
+@200
+-
+@28
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.replace_src2_with_amp
+@200
+-
+@22
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.alu.src1_in[12:0]
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.alu.src1[12:0]
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.alu.src2_in[15:0]
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.alu.src2[12:0]
+@200
+-
+-alu_unit
+@22
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.src1[12:0]
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.src1_in0[12:0]
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.src1_in[12:0]
+@28
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.mask_out_acc_top
+@200
+-
+@22
+tb_peripheral.peripheral.mc_alu_unit.reg_raddr[5:0]
+@28
+tb_peripheral.peripheral.mc_alu_unit.reg_raddr_valid
+tb_peripheral.peripheral.reg_rdata_valid_next
+tb_peripheral.peripheral.data_ready
+@22
+tb_peripheral.peripheral.data_out[31:0]
+@200
+-
+@28
+tb_peripheral.peripheral.mc_alu_unit.stereo_en
+@200
+-
+@28
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.dest_sel[1:0]
+@22
+tb_peripheral.peripheral.mc_alu_unit.alu_unit.out_acc[11:0]
+@28
+tb_peripheral.peripheral.mc_alu_unit.sample_out_acc
+@22
+tb_peripheral.peripheral.mc_alu_unit.pwm_counter[6:0]
+@28
+tb_peripheral.peripheral.mc_alu_unit.pwm_out
+tb_peripheral.peripheral.mc_alu_unit.pwm_out_right
+[pattern_trace] 1
+[pattern_trace] 0

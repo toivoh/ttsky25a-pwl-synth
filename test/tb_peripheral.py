@@ -4,8 +4,10 @@
 import cocotb
 from cocotb.clock import Clock
 from cocotb.triggers import ClockCycles
+from random import randrange
 
-INTERFACE_REGISTER_SHIFT = 4
+INTERFACE_REGISTER_SHIFT = 0
+PWM_OUTPUT_DELAY = 0
 
 def map_addr(addr, channel):
 	return (channel<<4) | ((addr&7)<<1) | ((addr&8)>>3)
@@ -172,4 +174,116 @@ async def test_read_oct_counter(dut):
 		dut.data_read.value = 0
 		await ClockCycles(dut.clk, 4)
 
+
+@cocotb.test()
+async def test_pwm(dut):
+	dut._log.info("Start")
+
+	peripheral = dut.peripheral
+	mc_alu_unit = peripheral.mc_alu_unit
+	alu_unit = mc_alu_unit.alu_unit
+
+	clock = Clock(dut.clk, 100, units="ns")
+	cocotb.start_soon(clock.start())
+
+	dut.rst_n.value = 0
+	await ClockCycles(dut.clk, 10)
+	dut.rst_n.value = 1
+
+	pwm_outs = []
+
+	for pw in range(65+1):
+		alu_unit.out_acc.value = pw << 4
+		#await ClockCycles(dut.clk, 64)
+		for i in range(64):
+			await ClockCycles(dut.clk, 1)
+			pwm_out = (peripheral.uo_out.value.integer >> 7) & 1
+			#print(pwm_out, end="")
+			pwm_outs.append(pwm_out)
+		#print()
+
+	ok = True
+
+	pwm_outs = pwm_outs[1+PWM_OUTPUT_DELAY:1+PWM_OUTPUT_DELAY+64*65]
+	for pw in range(65):
+		for i in range(64):
+			value = pwm_outs[pw*64+i]
+			expected = i >= (64-pw)
+			ch = str(value)
+			if value != expected:
+				ok = False
+				ch = "x" if value == 0 else "X"
+			print(ch, end="")
+		print()
+
+	assert ok
+
+
+@cocotb.test()
+async def test_stereo_pwm(dut):
+	dut._log.info("Start")
+
+	peripheral = dut.peripheral
+	mc_alu_unit = peripheral.mc_alu_unit
+	alu_unit = mc_alu_unit.alu_unit
+
+	clock = Clock(dut.clk, 100, units="ns")
+	cocotb.start_soon(clock.start())
+
+	dut.rst_n.value = 0
+	await ClockCycles(dut.clk, 10)
+	dut.rst_n.value = 1
+
+	mc_alu_unit.cfg.value = 1
+
+	for side in range(2):
+		print("side =", side)
+		pwm_outs = []
+
+		for pw in range(33+1):
+			pw0 = randrange(32)
+			pw1 = randrange(32)
+			if side==0: pw0 = pw
+			if side==1: pw1 = pw
+
+			alu_unit.out_acc.value = (pw0+32) << 4
+			#await ClockCycles(dut.clk, 64)
+			for i in range(64):
+				if i == 32: alu_unit.out_acc.value = (pw1+32) << 4
+
+				await ClockCycles(dut.clk, 1)
+				pwm_out = (peripheral.uo_out.value.integer >> (7-side)) & 1
+				#print(pwm_out, end="")
+				pwm_outs.append(pwm_out)
+			#print()
+
+		ok = True
+
+		pwm_outs = pwm_outs[1+PWM_OUTPUT_DELAY:1+PWM_OUTPUT_DELAY+64*65]
+
+		for pw in range(33):
+			for i in range(64):
+				if i == 32: print(end=" ")
+
+				value = pwm_outs[pw*64+i]
+
+				if side == 0:
+					if i < 32:
+						expected = i >= 32-pw
+					else:
+						expected = (i&31) < 11
+				else:
+					if i >= 32:
+						expected = (i&31) >= 32-pw
+					else:
+						expected = i < 15
+
+				ch = str(value)
+				if value != expected:
+					ok = False
+					ch = "x" if value == 0 else "X"
+				print(ch, end="")
+			print()
+		assert ok
+		print()
 

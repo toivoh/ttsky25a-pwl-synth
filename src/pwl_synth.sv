@@ -2490,22 +2490,25 @@ module pwls_multichannel_ALU_unit #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BI
 
 	reg [PWM_BITS-1:0] pwm_counter;
 
-	// Stop when we reach pwm_counter = 1 << (PWM_BITS - 1), but not when it has a small negative value
-	wire pwm_inc = !(pwm_counter[PWM_BITS-1] && !pwm_counter[PWM_BITS-2]);
+	// Don't need to handle negative values, the lowest value will be zero.
+	//// Stop when we reach pwm_counter = 1 << (PWM_BITS - 1), but not when it has a small negative value
+	//wire pwm_inc = !(pwm_counter[PWM_BITS-1] && !pwm_counter[PWM_BITS-2]);
 
 	always @(posedge clk) begin
-		if (sample_out_acc) pwm_counter <= out_acc_out[PWM_BITS+OUT_ACC_FRAC_BITS-1 -: PWM_BITS]; // sample_out_acc is low when en_eff is
-		else pwm_counter <= pwm_counter + pwm_inc; // TODO: should it be paused when en_eff is low?
+		if (sample_out_acc) pwm_counter <= out_acc_out[PWM_BITS+OUT_ACC_FRAC_BITS-1 -: PWM_BITS]; // sample_out_acc
+//		else pwm_counter <= pwm_counter + pwm_inc; // TODO: should it be paused when en_eff is low?
+		else pwm_counter <= pwm_counter + 1; // We will always have 64 cycles for a sample, the counter won't have time to wrap back
 	end
 
-	wire pwm_out_mono = !pwm_inc;
+	//wire pwm_out_mono = !pwm_inc;
+	wire pwm_out_mono = pwm_counter[PWM_BITS-1];
 
 `ifdef USE_STEREO
 	wire stereo_side = (term_index_eff[0] || term_index_eff[3]) ^ sample_out_acc;
 	wire inactive_pwm = !(term_index[2] || term_index[3] | sample_out_acc); // should go from high to low during each period that stereo_side is stable
 
-	assign pwm_out       = (!stereo_en || stereo_side == 0) ? pwm_out_mono : inactive_pwm;
-	assign pwm_out_right = (!stereo_en || stereo_side == 1) ? pwm_out_mono : inactive_pwm;
+	assign pwm_out       = (!stereo_en || stereo_side == 1) ? pwm_out_mono : inactive_pwm;
+	assign pwm_out_right = (!stereo_en || stereo_side == 0) ? pwm_out_mono : inactive_pwm;
 `else
 	assign pwm_out       = pwm_out_mono;
 	assign pwm_out_right = pwm_out_mono;

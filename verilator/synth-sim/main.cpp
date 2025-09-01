@@ -355,7 +355,7 @@ int main(int argc, char** argv) {
 		top->slope_offset = 0;
 
 		amp_write(main_channel, 63);
-		mode_write(main_channel, 0, true);
+		mode_write(main_channel, 0, MODE_FLAG_NOISE);
 		period_write(main_channel, 1, tune == 10 ? (1 << OCT_BITS) : 0);
 		//period_write(main_channel, 1, 0);
 	} else if (tune == 3 || tune == 4) {
@@ -474,7 +474,8 @@ int main(int argc, char** argv) {
 
 #ifndef STEREO_ON // TODO: test even with stereo
 			int pwm_adj = pwm_acc - curr_pwm_offset;
-			if (i > 0 && pwm_acc > 0 && pwm_adj*16 != sample) {
+			//if (i > 0 && pwm_acc > 0 && pwm_adj*16 != sample) {
+			if (i > 0 && pwm_adj*16 != sample) {
 #ifdef STEREO_ON
 				printf("side = %d: ", side);
 #endif
