@@ -1516,12 +1516,12 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 	assign bitshuffle_acc[12] = 0;
 `else
 	wire [BITS_E-1:0] bitshuffle_acc;
-	assign bitshuffle_acc[ 0] = acc[11]; // mask for original Orion Wave
+	assign bitshuffle_acc[ 0] = acc[ 3]; // mask for original Orion Wave
 	assign bitshuffle_acc[ 1] = acc[ 4];
-	assign bitshuffle_acc[ 2] = acc[10]; // mask for original Orion Wave
+	assign bitshuffle_acc[ 2] = acc[ 5]; // mask for original Orion Wave
 	assign bitshuffle_acc[ 3] = acc[ 7];
 	assign bitshuffle_acc[ 4] = acc[ 8];
-	assign bitshuffle_acc[ 5] = acc[ 9]; // mask for original Orion Wave
+	assign bitshuffle_acc[ 5] = acc[ 6]; // mask for original Orion Wave
 	assign bitshuffle_acc[ 6] = acc[10];
 	assign bitshuffle_acc[ 7] = acc[11]; // mask for original Orion Wave
 	assign bitshuffle_acc[ 8] = acc[ 8]; // mask for original Orion Wave
