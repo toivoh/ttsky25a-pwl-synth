@@ -559,8 +559,8 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 		dest_we_only_if_oct_en = 0;
 		reg_we_if_oct_en = 0;
 		rmw_continued = 0;
-		pred_sel = `PRED_SEL_OSC;
-		part_sel = `PART_SEL_SRC2_PRE_SIGN;
+		pred_sel = 'X; // Must always set when pred_we is set
+		part_sel = 'X; // Must always set when part_we is set
 		last_osc_wrapped_we = 0;
 		reg_we_only_if_part = 0;
 		reg_we_always = 0;
@@ -715,7 +715,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 `endif
 `ifdef USE_P_LATCHES_ONLY
 					// Write back new `oct_counter[23:12]`
-					reg_we_always = 1; // Based on that state == 6 will trigger and state == 0 will not. TODO: Update if state encoding changes
+					reg_we_always = 1;
 `else
 					// Write back new `oct_counter[11:0]`
 					reg_we_always = 1;
@@ -872,7 +872,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 				sat_en = 1;
 				inv_src1 = 0; inv_src2 = acc_sign; carry_in = 0;
 				src2_lshift = 0;
-				part_we = main_en;
+				part_we = main_en; part_sel = `PART_SEL_SRC2_PRE_SIGN;
 				dest_sel = `DEST_SEL_ACC;
 
 `ifdef USE_X2N_FLAGS
@@ -894,8 +894,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 `endif
 					sat_en = 0;
 					inv_src2 = 0;
-					part_we = main_en;
-					part_sel = `PART_SEL_ZERO;
+					part_we = main_en; part_sel = `PART_SEL_ZERO;
 				end
 `endif
 			end
