@@ -841,12 +841,18 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 				src2_sel = (detune_exp == 0) ? `SRC2_SEL_ZERO : `SRC2_SEL_DETUNE;
 				src2_rot = 1; sat_en = 0;
 				inv_src1 = 0; inv_src2 = sub_channel ^ swap_detune_sign; carry_in = 0;
+`ifdef USE_SWAPPED_DETUNE_SIGNS
+				inv_src2 = !inv_src2;
+`endif
 				src2_lshift = detune_exp;
 				dest_sel = `DEST_SEL_ACC;
 
 `ifdef USE_3X_FLAG
 				if (sub_channel == 0 && phase_factor_en && channel_mode[`CHANNEL_MODE_BIT_3X]) begin
 					src2_sel = `SRC2_SEL_ACC;
+`ifdef USE_SWAPPED_DETUNE_SIGNS
+					inv_src2 = 0;
+`endif
 					src2_lshift = 1;
 					// TODO: If the 3X flag can be used with stereo_pos_en, turn off inv_src2 here.
 				end
