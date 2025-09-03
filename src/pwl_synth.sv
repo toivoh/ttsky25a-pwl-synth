@@ -483,7 +483,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 				stereo_pos_out_on = sub_channel;
 				stereo_pos_halve_amp = 0;
 			end
-			if (stereo_pos[2] || stereo_pos == 0) swap_detune_sign = swappable_sample;
+			if ((stereo_pos[2] == 0) || stereo_pos[1:0] == 0) swap_detune_sign = swappable_sample;
 		end
 	end
 
