@@ -395,7 +395,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 		input wire extra_term,
 
 		input wire [SHIFT_COUNT_BITS-1:0] osc_shift,
-		input wire oct_enable, acc_sign, pred, part, first_channel, sub_channel, common_sat, carry_out,
+		input wire oct_enable, acc_sign, pred, part, first_channel, sub_channel, common_sat_store, common_sat_add, carry_out,
 		input wire [DETUNE_EXP_BITS-1:0] detune_exp,
 		input wire [SLOPE_EXP_BITS-1:0] slope_exp,
 		input wire [`CHANNEL_MODE_BITS-1:0] channel_mode,
@@ -745,6 +745,11 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 					src2_lshift_extra = 'X;
 				end
 			endcase
+
+			if (!main_en) begin
+				dest_sel = `DEST_SEL_NOTHING;
+				pred_we = 0;
+			end
 		end else case (state)
 			`STATE_CMP_REV_PHASE: begin
 				src1_sel = `SRC1_SEL_MANTISSA;
@@ -761,19 +766,6 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 				if (pwl_osc_en) begin
 					src2_sel = `SRC2_SEL_PHASE_MODIFIED;
 					src2_lshift = 0;
-				end
-`endif
-
-`ifdef USE_COMMON_SAT
-				if (common_sat && sub_channel == 1) begin // do add of out_acc instead
-					src1_sel = `SRC1_SEL_OUT_ACC; out_acc_frac_mask = 0;
-					src2_sel = `SRC2_SEL_ACC;
-					sat_en = 1;
-					inv_src1 = 0; inv_src2 = 0; carry_in = 0;
-					src2_lshift = 0;
-					src2_mask_msbs = 0;
-					pred_we = 0;
-					dest_sel = `DEST_SEL_ACC;
 				end
 `endif
 			end
@@ -823,7 +815,8 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 				rmw_continued = 1; // Without this, we might use the pred flag for the old phase with the value of the new. Might not be that bad.
 
 `ifdef USE_P_LATCHES_ONLY
-				// Write the phase from acc to phase, if we are in the first subchannel so that the new phase is stored in acc
+				// Write the phase from acc to phase, if we are in the first subchannel so that the new phase is stored in acc.
+				// Redundant if we don't enter `STATE_UPDATE_PHASE for sub-channel 1
 				reg_we_if_oct_en = (sub_channel == 0);
 `endif
 
@@ -990,7 +983,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 
 `ifdef USE_COMMON_SAT
 				out_acc_frac_update_en = 0;
-				if (common_sat && (sub_channel == 0)) begin
+				if (common_sat_store) begin
 					dest_sel = `DEST_SEL_OUT_ACC;
 					result_mask_bottom = 0;
 				end
@@ -1032,7 +1025,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 			`STATE_OUT_ACC: begin
 				//src1_sel = first_channel ? `SRC1_SEL_ZERO : `SRC1_SEL_OUT_ACC;
 				src1_sel = `SRC1_SEL_OUT_ACC;
-				mask_out_acc_top = first_channel && (sub_channel == 0 || common_sat || stereo_en);
+				mask_out_acc_top = (first_channel && (sub_channel == 0 || stereo_en)) || common_sat_add;
 				src2_sel = stereo_pos_out_on ? `SRC2_SEL_ACC : `SRC2_SEL_ZERO;
 				sat_en = 0; // Saturation doesn't seem to play well with the right shift; would at least have to disable shl saturation to make it work.
 
@@ -1049,7 +1042,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 				dest_sel = `DEST_SEL_OUT_ACC;
 
 `ifdef USE_COMMON_SAT
-				if (common_sat) begin
+				if (common_sat_add) begin
 					// Double the output amplitude since we didn't output anything for the first subchannel
 					src2_lshift_extra = 1;
 					src2_sext_less = 1;
@@ -1085,6 +1078,34 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 				part_sel = 'X;
 			end
 		endcase
+
+`ifdef USE_COMMON_SAT
+`ifdef USE_COMMON_SAT_STEREO
+		if (state[2:1] == 0) begin
+`else
+		if (state == `STATE_CMP_REV_PHASE) begin
+`endif
+			if (common_sat_add) begin // do add of out_acc instead
+				src1_sel = `SRC1_SEL_OUT_ACC; out_acc_frac_mask = 0;
+				src2_sel = `SRC2_SEL_ACC;
+				sat_en = 1;
+				inv_src1 = 0; inv_src2 = 0; carry_in = 0;
+				src2_lshift = 0;
+				src2_mask_msbs = 0;
+				pred_we = 0;
+				dest_sel = `DEST_SEL_ACC;
+
+`ifdef USE_COMMON_SAT_STEREO
+				src2_lshift_extra = 0;
+				lfsr_extra_bits_we_if_oct_en = 0;
+				reg_we_always = 0;
+				reg_we_if_oct_en = 0;
+				last_osc_wrapped_we = 0;
+				src2_forward_extra_bit = 0;
+`endif
+			end
+		end
+`endif
 
 		if (!main_en) begin
 			dest_sel = `DEST_SEL_NOTHING;
@@ -1150,7 +1171,7 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 		input wire extra_term,
 		input wire first_channel, sub_channel, oct_counter_we,
 		input wire [$clog2(NUM_CHANNELS)-1:0] curr_channel,
-		input wire common_sat,
+		input wire common_sat_store, common_sat_add,
 		input wire [`SWEEP_DIR_BITS-1:0] sweep_dir,
 		input wire [`SWEEP_INDEX_BITS-1:0] sweep_index,
 `ifdef USE_NEW_READ
@@ -1396,7 +1417,7 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 		.last_osc_wrapped_out(last_osc_wrapped),
 `endif
 
-		.osc_shift(osc_shift), .oct_enable(oct_enable), .acc_sign(acc[BITS-1]), .pred(pred), .part(part), .first_channel(first_channel), .sub_channel(sub_channel), .common_sat(common_sat), .carry_out(carry_out),
+		.osc_shift(osc_shift), .oct_enable(oct_enable), .acc_sign(acc[BITS-1]), .pred(pred), .part(part), .first_channel(first_channel), .sub_channel(sub_channel), .common_sat_store(common_sat_store), .common_sat_add(common_sat_add), .carry_out(carry_out),
 		.detune_exp(detune_exp), .slope_exp(slope_exp), .channel_mode(channel_mode), .cfg(cfg), .sweep_dir(sweep_dir), .sweep_index(sweep_index), .swappable_sample(swappable_sample),
 `ifdef USE_NEW_READ
 		.reg_read_index(reg_read_index),
@@ -2110,17 +2131,42 @@ module pwls_multichannel_ALU_unit #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BI
 	wire [`CHANNEL_MODE_BITS-1:0] channel_mode;
 
 `ifndef USE_COMMON_SAT
-	wire common_sat = 0;
+	wire common_sat_store = 0;
+	wire common_sat_add = 0;
 `else
+
+`ifndef USE_COMMON_SAT_STEREO
 	// Common saturation only works for channel 0, since it uses out_acc for temporary storage
 	wire common_sat = channel_mode[`CHANNEL_MODE_BIT_COMMON_SAT] && (curr_channel == 0) && !stereo_en;
+	wire common_sat_store = common_sat && (curr_sub_channel == 0);
+	wire common_sat_add = common_sat && (curr_sub_channel == 1);
+`else
+	wire common_sat_flag = modes[0][`CHANNEL_MODE_BIT_COMMON_SAT];
+	// not registers
+	reg common_sat_store, common_sat_add;
+	always_comb begin
+		common_sat_store = 0;
+		common_sat_add = 0;
+		if (common_sat_flag) begin
+			if (stereo_en) begin
+				common_sat_store = (curr_channel == 0);
+				common_sat_add = state[2] ? (curr_channel == 1) : (curr_sub_channel == 1);
+			end else begin
+				if (curr_channel == 0) begin
+					common_sat_store = (curr_sub_channel == 0);
+					common_sat_add = (curr_sub_channel == 1);
+				end
+			end
+		end
+	end
+`endif
 `endif
 
 
 	//wire next_term_if_en = (state_eff == (wf_term ? `STATE_LAST : NUM_EXTRA_STATES-1));
 	reg [`STATE_BITS-1:0] state_last; // not a register
 	always_comb begin
-		if (common_sat && wf_term && (curr_sub_channel==0)) state_last = `STATE_AMP_CMP;
+		if (common_sat_store && wf_term) state_last = `STATE_AMP_CMP;
 		else state_last = wf_term ? `STATE_LAST : NUM_EXTRA_STATES-1;
 	end
 	wire next_term_if_en = (state_eff == state_last);
@@ -2129,34 +2175,45 @@ module pwls_multichannel_ALU_unit #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BI
 	wire next_sample = next_term && last_term; // also gated by en_eff
 
 
-`ifndef USE_STEREO
-	wire [LOG2_TERMS-1:0] next_term_index = term_index_eff + next_term;
-	wire next_initial_state_detune = DETUNE_ON && (wf_term && curr_sub_channel == 0);
-`else
 	// not registers
 	reg [LOG2_TERMS-1:0] next_term_index;
 	reg [1:0] term_delta;
+	reg [`STATE_BITS-1:0] next_state; // not a register
 	always_comb begin
+`ifndef USE_STEREO
+		next_term_index = term_index_eff + next_term;
+`else
 		term_delta = stereo_en ? 2 : 1;
 		next_term_index = term_index_eff + (next_term ? term_delta : 0);
 		if (stereo_en && next_term && term_index_eff >> 1 == 6 >> 1) next_term_index = term_index_eff[0] ? 8 : 1; // 6 -> 1, 7 -> 8
 		if (next_sample) next_term_index = 0;
-	end
-	wire next_initial_state_detune = DETUNE_ON && (!next_term_index[3] && next_term_index[0]);
 `endif
 
-	//wire [`STATE_BITS+1-1:0] next_state = state_eff + en_eff;
-	reg [`STATE_BITS-1:0] next_state; // not a register
-	always_comb begin
 		next_state = state_eff + en_eff;
-		if (en_eff & common_sat && wf_term && (curr_sub_channel == 1)) begin
+		if (en_eff & common_sat_add && wf_term) begin
+`ifndef USE_COMMON_SAT_STEREO
 			// Insert STATE_CMP_REV_PHASE between STATE_COMBINED_SLOPE_ADD and STATE_AMP_CMP, repurposed for common_sat
 			case (state_eff)
 				`STATE_COMBINED_SLOPE_ADD: next_state = `STATE_CMP_REV_PHASE;
 				`STATE_CMP_REV_PHASE: next_state = `STATE_AMP_CMP;
 			endcase
+`else
+			if (state == `STATE_COMBINED_SLOPE_ADD) begin
+				// Insert extra add step: state = 0 or 1, term_index = 1
+				next_state = term_index[0];
+				next_term_index[0] = 1;
+			end else if (curr_sub_channel == 1 && state[2:1] == 0) begin
+				next_state = `STATE_AMP_CMP;
+				next_term_index[0] = state[0];
+			end
+`endif
 		end
 	end
+`ifndef USE_STEREO
+	wire next_initial_state_detune = DETUNE_ON && (wf_term && curr_sub_channel == 0);
+`else
+	wire next_initial_state_detune = DETUNE_ON && (!next_term_index[3] && next_term_index[0]);
+`endif
 
 
 
@@ -2427,7 +2484,7 @@ module pwls_multichannel_ALU_unit #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BI
 		.OUT_ACC_INITIAL_TOP(OUT_ACC_INITIAL_TOP), .OUT_ACC_INITIAL_TOP_STEREO(OUT_ACC_INITIAL_TOP_STEREO), .REV_PHASE_SHR(REV_PHASE_SHR), .AMP_BITS(AMP_BITS)
 	) alu_unit(
 		.clk(clk), .rst_n(rst_n), .en(alu_en),
-		.state(state_eff), .extra_term(extra_term), .first_channel((term_index_eff >> 1) == '0), .oct_counter_we(oct_counter_we), .sub_channel(curr_sub_channel), .curr_channel(curr_channel), .common_sat(common_sat),
+		.state(state_eff), .extra_term(extra_term), .first_channel((term_index_eff >> 1) == '0), .oct_counter_we(oct_counter_we), .sub_channel(curr_sub_channel), .curr_channel(curr_channel), .common_sat_store(common_sat_store), .common_sat_add(common_sat_add),
 		.octave(octave),
 		//.octave(octave_reg),
 		.detune_exp(detune_exp), .slope_exp(slope_exp_eff), .channel_mode(channel_mode), .cfg(cfg), .sweep_dir(sweep_dir), .sweep_index(sweep_index),
