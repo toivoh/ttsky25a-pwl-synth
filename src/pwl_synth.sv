@@ -831,13 +831,11 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 			end
 			`STATE_DETUNE: begin
 				src1_sel = `SRC1_SEL_PHASE;
-//`ifndef USE_DETUNE_FIFTH
+`ifndef USE_DETUNE_FIFTH
 				src2_sel = (detune_exp == 0) ? `SRC2_SEL_ZERO : `SRC2_SEL_DETUNE;
-/*
 `else
 				src2_sel = (detune_exp == 0 && !(channel_mode[`CHANNEL_MODE_BIT_DETUNE_FIFTH] && (sub_channel == 0))) ? `SRC2_SEL_ZERO : `SRC2_SEL_DETUNE;
 `endif
-*/
 				src2_rot = 1; sat_en = 0;
 				inv_src1 = 0; inv_src2 = sub_channel ^ swap_detune_sign; carry_in = 0;
 `ifdef USE_SWAPPED_DETUNE_SIGNS
