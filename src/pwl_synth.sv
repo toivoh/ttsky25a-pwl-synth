@@ -831,13 +831,22 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 			end
 			`STATE_DETUNE: begin
 				src1_sel = `SRC1_SEL_PHASE;
+//`ifndef USE_DETUNE_FIFTH
 				src2_sel = (detune_exp == 0) ? `SRC2_SEL_ZERO : `SRC2_SEL_DETUNE;
+/*
+`else
+				src2_sel = (detune_exp == 0 && !(channel_mode[`CHANNEL_MODE_BIT_DETUNE_FIFTH] && (sub_channel == 0))) ? `SRC2_SEL_ZERO : `SRC2_SEL_DETUNE;
+`endif
+*/
 				src2_rot = 1; sat_en = 0;
 				inv_src1 = 0; inv_src2 = sub_channel ^ swap_detune_sign; carry_in = 0;
 `ifdef USE_SWAPPED_DETUNE_SIGNS
 				inv_src2 = !inv_src2;
 `endif
 				src2_lshift = detune_exp;
+`ifdef USE_DETUNE_FIFTH
+				src2_lshift_extra = channel_mode[`CHANNEL_MODE_BIT_DETUNE_FIFTH] && (sub_channel == 0);
+`endif
 				dest_sel = `DEST_SEL_ACC;
 
 `ifdef USE_3X_FLAG
@@ -847,6 +856,7 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 					inv_src2 = 0;
 `endif
 					src2_lshift = 1;
+					//src2_lshift_extra = 0;
 					// TODO: If the 3X flag can be used with stereo_pos_en, turn off inv_src2 here.
 				end
 `ifdef USE_X2N_FLAGS
@@ -2559,7 +2569,7 @@ module pwls_multichannel_ALU_unit #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BI
 	always @(posedge clk) begin
 		if (sample_out_acc) pwm_counter <= out_acc_out[PWM_BITS+OUT_ACC_FRAC_BITS-1 -: PWM_BITS]; // sample_out_acc
 //		else pwm_counter <= pwm_counter + pwm_inc; // TODO: should it be paused when en_eff is low?
-		else pwm_counter <= pwm_counter + 1; // We will always have 64 cycles for a sample, the counter won't have time to wrap back
+		else pwm_counter <= pwm_counter + !pwm_counter[PWM_BITS-1]; // We will always have 64 cycles for a sample, the counter won't have time to wrap back
 	end
 
 	//wire pwm_out_mono = !pwm_inc;
