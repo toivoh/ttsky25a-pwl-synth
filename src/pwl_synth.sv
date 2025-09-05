@@ -2016,7 +2016,8 @@ module pwls_multichannel_ALU_unit #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BI
 
 `ifdef USE_OSC_SYNC_ONLY_FOR_SOME_CHANNELS
 	assign modes[0] = modes0[0];
-	assign modes[1] = modes0[1] & ~`CHANNEL_MODE_FLAGS_OSC_SYNC_MASK & ~(1 << `CHANNEL_MODE_BIT_DETUNE_FIFTH);
+	//assign modes[1] = modes0[1] & ~`CHANNEL_MODE_FLAGS_OSC_SYNC_MASK & ~(1 << `CHANNEL_MODE_BIT_DETUNE_FIFTH);
+	assign modes[1] = modes0[1] & ~`CHANNEL_MODE_FLAGS_OSC_SYNC_MASK;
 	assign modes[2] = modes0[2] & ~`CHANNEL_MODE_FLAGS_OSC_SYNC_MASK;
 	assign modes[3] = modes0[3] & ~(1 << `CHANNEL_MODE_BIT_DETUNE_FIFTH);
 `else
