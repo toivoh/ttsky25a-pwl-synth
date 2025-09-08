@@ -21,13 +21,26 @@ function wf(mantissa::Int, n::Int)
 	return y
 end
 
-mantissa = 0x5555 & (2^(BITS-1)-1)
+#mantissa = 0x5555 & (2^(BITS-1)-1)
+mantissa = 0xaaaa & (2^(BITS-1)-1)
 
 period = 2^(BITS-1) + mantissa
 
 y = wf(mantissa, 2*period)
 display(plot(y))
 @test y[end] == 0
+
+
+
+display(plot(y, color = 3))
+
+n = length(y)
+period = n >> 1
+x = 0:n
+y = round.((x .% period) * (256 / period))*16
+
+display(plot!(x .- n*1.1, y, color = 1, aspect_ratio = 1, axis=([], false), ticks = false, legend = nothing))
+#savefig("../../docs/pwl-phase-uncropped.png")
 
 end
 

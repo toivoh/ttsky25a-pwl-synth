@@ -1,7 +1,7 @@
 # Tiny Tapeout project information
 project:
-  title:        "PWL synth"      # Project title
-  author:       "Toivo Henningsson"      # Your name
+  title:        "PiecewiseOrionSynth"     # Project title
+  author:       "Toivo Henningsson"       # Your name
   discord:      "possible_realities"      # Your discord username, for communication and automatically assigning you a Tapeout role (optional)
   description:  "4 channel chip tune/synth peripheral for TinyQV"      # One line description of what your project does
   language:     "Verilog" # other examples include SystemVerilog, Amaranth, VHDL, etc
@@ -42,14 +42,14 @@ pinout:
   ui[7]: ""
 
   # Outputs
-  uo[0]: "pwm_out"
-  uo[1]: "pwm_out"
-  uo[2]: "pwm_out"
-  uo[3]: "pwm_out"
-  uo[4]: "pwm_out"
-  uo[5]: "pwm_out"
-  uo[6]: "pwm_out"
-  uo[7]: "pwm_out"
+  uo[0]: "pwm_out_l"
+  uo[1]: "pwm_out_r"
+  uo[2]: "pwm_out_l"
+  uo[3]: "pwm_out_r"
+  uo[4]: "pwm_out_l"
+  uo[5]: "pwm_out_r"
+  uo[6]: "pwm_out_l"
+  uo[7]: "pwm_out_r"
 
   # Bidirectional pins
   uio[0]: "user_interrupt"

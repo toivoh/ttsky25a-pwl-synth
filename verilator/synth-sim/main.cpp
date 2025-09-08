@@ -17,6 +17,8 @@
 //#define STEREO_POS_ON // might have an effect even if stereo is off, affecting the subchannels
 
 //#define TRACE_ON
+int trace_countdown = 0;
+//int trace_countdown = 129434;
 
 #ifndef TRACE_ON
 #define SAVE_AUDIO
@@ -133,7 +135,9 @@ int sim_time = 0;
 
 inline void trace() {
 #ifdef TRACE_ON
-	m_trace->dump(sim_time); sim_time++;
+	if (trace_countdown == 0) {
+		m_trace->dump(sim_time); sim_time++;
+	}
 #endif
 }
 
@@ -272,7 +276,8 @@ int main(int argc, char** argv) {
 
 	int num_samples = NUM_NOTES << LOG2_SAMPLES_PER_NOTE;
 #ifdef TRACE_ON
-	num_samples = 16;
+	//num_samples = 16;
+	num_samples = trace_countdown + 16;
 #endif
 
 #ifdef SAVE_AUDIO
@@ -340,7 +345,7 @@ int main(int argc, char** argv) {
 
 			int flags = 0;
 #ifdef STEREO_POS_ON
-			const int stereo_pos[] = {0,4,1,3};
+			const int stereo_pos[] = {0,4,5,7};
 			flags |= stereo_pos[channel] << MODE_BIT_3X;
 #endif
 
@@ -383,10 +388,20 @@ int main(int argc, char** argv) {
 		period_write(0, 4, note_mantissas[0]); // C4
 
 		if (tune == 13) {
-			mode_write(0, 4, MODE_FLAG_COMMON_SAT, 1 | (1 << 1));
+			int phase_factors = 1 | (1 << 1);
+#ifdef STEREO_ON
+			phase_factors = 0;
+			amp_write(1, 63);
+			period_write(0, 3, note_mantissas[0]);
+			period_write(1, 3, note_mantissas[7]-7); // fifth
+			//period_write(1, 3, note_mantissas[5]-8); // fourth
+#endif
+			mode_write(0, 4, MODE_FLAG_COMMON_SAT, phase_factors);
 			reg_write(SLOPE0_ADDR, 0, 128);
+			reg_write(SLOPE0_ADDR, 1, 128);
 			int slope_sweep_rate = 2+LOG2_SAMPLES_PER_NOTE-1+4-8 + 1;
 			sweep_pwmoffs_slope_write(0, 0, 0, slope_sweep_rate, 1, 1); // sweep down slope0
+			sweep_pwmoffs_slope_write(1, 0, 0, slope_sweep_rate, 1, 1); // sweep down slope0
 		}
 	} else if (tune == 15) {
 		amp_write(0, 63);
@@ -394,12 +409,13 @@ int main(int argc, char** argv) {
 		int detune_exp = 0;
 		//int detune_exp = 4;
 		mode_write(0, detune_exp, MODE_FLAGS_ORION);
-		reg_write(SLOPE1_ADDR, 0, 0b11001010);
+		reg_write(SLOPE1_ADDR, 0, 0b11001011);
 		reg_write(PWM_OFFSET_ADDR, 0, 0xff); // To defeat the PWM offset, -1 is as close to zero as we get
 	} else if (tune == 16) {
-		amp_write(0, 63);
-		amp_write(1, 63);
-		period_write(0, 4, note_mantissas[0]); // C4
+		//amp_write(0, 63);
+		amp_write(2, 0);
+		amp_write(3, 63);
+		period_write(2, 4, note_mantissas[0]); // C4
 	}
 
 // Main loop
@@ -419,6 +435,7 @@ int main(int argc, char** argv) {
 
 	bool run = true;
 	for (int i = 0; i < num_samples; i++) {
+
 		if (!run) break;
 
 #ifdef DOWNSAMPLE
@@ -505,6 +522,7 @@ int main(int argc, char** argv) {
 #endif
 		}
 		//if (i > (1<<15)) break; //!!!!
+		if (trace_countdown > 0) trace_countdown--;
 
 #ifdef SAVE_AUDIO
 #ifdef DOWNSAMPLE
@@ -642,7 +660,7 @@ int main(int argc, char** argv) {
 			bool first = (i & ((1 << shr0) - 1)) == 0;
 
 			if (first) {
-				period_write(1, 5, note_mantissas[5]); // F3
+				period_write(3, 5, note_mantissas[5]); // F3
 				int detune_exp = 0;
 				//int detune_exp = 4;
 
@@ -653,11 +671,11 @@ int main(int argc, char** argv) {
 				flags1 |= 4 << MODE_BIT_3X;
 #endif
 
-				mode_write(0, detune_exp, flags0);
-				mode_write(1, detune_exp, flags1 | MODE_FLAG_OSC_SYNC_EN | (t == 0 ? MODE_FLAG_OSC_SYNC_SOFT : 0));
+				mode_write(2, detune_exp, flags0);
+				mode_write(3, detune_exp, flags1 | MODE_FLAG_OSC_SYNC_EN | (t == 0 ? MODE_FLAG_OSC_SYNC_SOFT : 0));
 
 				int sweep_rate = 2+LOG2_SAMPLES_PER_NOTE-1+4-12 - 1;
-				sweep_period_amp_write(1, sweep_rate, 1);
+				sweep_period_amp_write(3, sweep_rate, 1);
 			}
 		}
 	}
