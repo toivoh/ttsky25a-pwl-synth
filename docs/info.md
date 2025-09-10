@@ -56,7 +56,7 @@ Features:
 <a name="toc"></a>
 ## Table of contents
 
-TODO: update
+(See https://github.com/toivoh/ttsky25a-pwl-synth/blob/main/docs/info.md#toc for a version with clickable links.)
 
 - [Overview](#overview)
 - [Table of contents](#toc)
@@ -84,8 +84,6 @@ TODO: update
 	- [Implementing envelopes](#envelopes)
 	- [Low frequency notes](#low_freq_notes)
 	- [The `counter` register](#oct_counter)
-- [How to test](#how_to_test)
-- [External hardware](#ext_hw)
 - [How it works](#how_it_works)
 	- [ALU](#alu)
 	- [Program](#program)
@@ -96,6 +94,9 @@ TODO: update
 	- [Stereo output](#stereo_output)
 	- [Avoiding race conditions between internal and external register writes](#write_collision)
 	- [Space saving hacks that depend on peripheral interface specifics](#space_hacks)
+- [Tests used in development](#dev_tests)
+- [How to test](#how_to_test)
+- [External hardware](#ext_hw)
 
 <a name="regmap"></a>
 ## Register map
@@ -152,6 +153,7 @@ Each of the four channels has the same register layout, starting at offsets mult
 - All sizes (8/16/32 bits) of reads and writes are recognized by the synth, but will only access the register at the given address.
 	- 32 bit writes discard the upper 16 bits, while 32 bit reads return zeros in the upper 16 bits.
 	- Avoid using 8 bit writes on registers that are bigger than 8 bits: the whole register will be written, but the values written to bits 8 and above are unspecified.
+- All registers that can be updated by the synth itself are read/write, while registers that can only be updated by external writes are read only.
 
 The synth operates in a loop, computing a new sample every clock 64 cycles. Reads can only be performed at a specific point at the end of each loop (reads of the sample counter are performed a few cycles earlier in the loop), so reads may be delayed by up to 64 clock cycles before they can start. A side effect is that a read of any register will synchronize the CPU to the synth's timing.
 
@@ -291,23 +293,39 @@ The simple clamping behavior for `amp` avoids rounding artifacts, and also cause
 
 The rising slope `slope_r` is applied during the first half of the period, and the falling slope `slope_f` during the second half. If the slopes are different, `pwm_offset` is big enough, and at least one of the slopes is small enough, there can be a discontinuity in the output waveform when switching from `slope_f` to `slope_r`. This should be avoided if a dark tone color is desired, but could of course be used to create certain effects.
 
+A `slope` value of zero keeps the incoming triangle wave (with possible offset) as it is.
+Every increase of `slope` by 16 doubles the slope. Successive slope increase between two doublings creates a piecewise linear waveform that combines segments with the lower slope and the (two times) higher slope, which adds some color variation to the sound as the slope is increased/decreased. Some steps from `slope = 0` to `slope = 16` are illustrated below:
+
+![Gradual slope increase between two doublings](slope.png)
+
 The oscillators are always running, so when starting a new note, the phase might be at any value. If you want to control the starting phase, write to the corresponding `phase` register just before turning on the note (probably by initiating an `amp` sweep up from zero, or possibly by setting `amp` directly). Note that when detuning is used, the phase that is used for the waveform contains a detuning term as well, and the phases of the two sub-channels will likely not be the same.
 
 #### Detuning
 
-Detuning is off when `detune_exp = detune_fifth = 0`.
-Increasing `detune_exp` by 1 doubles the detuning frequency (the difference between the frequencies of the two sub-channels). Setting `detune_fifth = 1` normally multiplies the detuning frequency by 1.5, by increasing the effective value of `detune_exp` by one for sub-channel 0 only (if no detuning is applied through sub-channel 0, this has no effect).
+Detuning is used to create a small frequency difference between the two sub-channels. When the two waveforms are added together, the resulting beating effect adds depth to the sound.
+The delta frequency between the two sub-channels should be more or less proportional to the note frequecy being played.
+The delta frequency for a channel can set with `detune_exp`, each increase by one causes a doubling, except that `detune_exp = 0` turns off detuning.
 
-When `detune_exp = 0, detune_fifth = 1`, the detuning frequency becomes half that of `detune_exp = 1, detune_fifth = 0` instead (if detuning is applied to channel 0).
+For channels that support it, setting `detune_fifth = 1` can be used as an intermediate step between doublings, multiplying the delta frequency by 1.5.
+(The case when `detune_exp = 0, detune_fifth = 1` has half the delta frequency of `detune_exp = 1, detune_fifth = 0`).
 The case `detune_exp = 7, detune_fifth = 1` should produce detuning at 1.5 the rate of `detune_exp = 7, detune_fifth = 0`, but there will be an error in bit 0 of the 12 bit phase after detuning.
 
-TODO: fix
-The detuning is approximately
+In the default signal flow, the delta frequency when `detune_fifth = 0, detune_exp > 0` is given by
 
-	detune = +- (1.69 cents) * 2^(detune_exp - octave)
+	delta_frequency = fs * 2^(detune_exp - 24)
 
-where `octave = 7 - period_exp`.
+which goes from around 0.12 Hz to 7.6 Hz, as `detune_exp` goes from 1 to 7 (with a sampling frequency of `fs = 1 MHz`).
 
+The relative delta frequency becomes
+
+	delta_frequency / f = 2^(detune_exp - 24) * (2^(period_exp - 2) * (1024 + mantissa))
+						= 2^(detune_exp - 24) * (2^(5 - octave) * (1024 + mantissa))
+						= 2^(detune_exp - octave) * (1024 + mantissa) * 2^-19
+						= 2^-8 * (1024 + mantissa) / 2048 * 2^(detune_exp - octave)
+
+Setting `detune_exp = octave` gives a relative delta frequency of `2^-9` to `2^-8`, depending on `mantissa`, or 3.4 to 6.7 cents difference in pitch between the two sub-channels, which shouldn't be excessive, at least the double (`detune_exp = min(7, octave + 1)`) should be useful as well. Lower detuning values can of course be used if less detuning is desired.
+
+See below for how `freq_multipliers` affects the delta frequency. The general effect is that if it is turned on, no detuning is applied through sub-channel 0, halving the delta frequency so that `detune_exp` should be increased by one to achieve the same effect. The fundamental frequency is also changed, but in some cases the detuning is scaled to compensate.
 
 #### Pseudocode
 The pseudocode below is expressed in terms of rescaled register values
@@ -322,10 +340,9 @@ The calculations for the default signal path can be described according to the f
 	y = phase_s
 	# y = sawtooth wave or noise, 0 <= y <= 1
 
-	# Detune. The waveform is calculated once with detune_sign = +1,
-	# and once with detune_sign = -1, and added.
-	# detune_exp <= 8-period_exp should sound fine, higher values might start to sound off due to too much detuning.
-	if detune_exp != 0:
+	# Detune. The waveform is calculated with detune_sign = -1 for sub-channel 0, and with detune_sign = +1 for sub-channel 1. 
+	# If detune_fifth=1, detune_sign = -2 is used for sub-channel 0, causing 1.5x as much detuning.
+	if detune_exp != 0 or (sub_channel == 0 and detune_fifth != 0):
 		y = wrap(y + detune_sign * sample_counter * 2^(detune_exp - 25))
 	# y = sawtooth wave, 0 <= y <= 1
 
@@ -343,10 +360,17 @@ The calculations for the default signal path can be described according to the f
 	y = min(y + pwm_offset_s, 1)  # 0 <= pwm_offset_s < 1
 	# y = triangle wave with DC offset, clamped to y <= 1
 
-	# Increase slope, clamp to -1 <= y <= 1. The slope value used depends on if we are on the rising or falling edge of the waveform.
-	# Approximate formula, the actual waveform for fractional slopes is a little different.
+	# Increase slope, clamp to -1 <= y <= 1.
+	## The slope value used depends on if we are on the rising or falling edge of the waveform.
 	slope_s = slope_f_s if part else slope_r_s
-	y = saturate(2^slope_s * y)
+	## The slope update behaves approximately like y = saturate(2^slope_s * y), but uses a piecewise linear approximation
+	## Split the slope into integer and fractional parts
+	slope_int = floor(slope_s)
+	slope_frac = slope_s - slope_int
+	## Apply the integer slope
+	y = saturate(2^slope_int * y)
+	## Apply the fractional slope. slope_frac = 0 ==> no change, slope_frac = 1 ==> y = 2y
+	y = saturate(clamp(2*y, -slope_frac/2, slope_frac/2))
 
 	# Volume clamp
 	y = clamp(y, -amp_s, amp_s)
@@ -384,7 +408,7 @@ The rising and falling slope values `slope_r` and `slope_f` share a common sweep
 
 <a name="additional_functions"></a>
 ## Additional synth functions
-These functions alter the waveform calculations in the synth in various ways relative to the voice architecture diagram above. TODO: link
+These functions alter the waveform calculations in the synth in various ways relative to the voice architecture diagram in the [waveform shaping](#wf_shaping) section.
 
 <a name="stereo_mode"></a>
 ### Stereo mode
@@ -637,82 +661,6 @@ Since the detune phase is derived from shifting the sample counter, at `fs = 1 M
 
 	detune_period = (fs * (60s/min) / 2^18 * 2^(detune_exp-7)) = 228.88 bpm * 2^(detune_exp-7)
 
-<a name="how_to_test"></a>
-## How to test
-
-All registers start at initial value 0, which means that the volume is zero and detuning is off. The synth always plays, and a sound will be output as soon as the volume of a waveform is increased from zero.
-
-To make a sound, the amplitude has to be turned up. Start by setting it to 63 for the channels that you want to play.
-
-The following mantissas make up an equal tempered scale:
-
-	C    C#   D    D#   E    F    F#   G    G#   A    A#  B
-	909, 801, 698, 601, 510, 424, 343, 266, 194, 125, 61, 0
-
-Use `period_exp = 7 - octave`.
-
-Here is a simple melody that you can try by writing these values in sequence to `f_period` of one channel: (make sure to set its `amp` to 63 first)
-
-	f_period = 4096
-	f_period = 3415
-	f_period = 3133
-	f_period = 3072
-
-You can use `detune_exp` = 5 or 4 with these notes for some detuning.
-
-You can also play a chord by setting up four different periods for the channels, such as
-
-	f_period[0] = 4794
-	f_period[1] = 4362
-	f_period[2] = 3981
-	f_period[3] = 3673
-
-You can turn them on one at a time (maybe ramping up the amplitude for each new note from 0 to 63 before starting to ramp up the next one).
-`detune_exp` = 5 or 4 works fine in this case.
-
-The default waveform has `pwm_offset_s = slope_r_s = slope_f_s = 0`, which makes a triangle wave.
-Some example waveforms:
-
-	# Triangle wave.
-	# Timbre initially becomes darker (more sine-like) when lowering amplitude from amp_s = 1.
-	pwm_offset_s = 0, slope_r_s = 0, slope_f_s = 0
-
-	# Square wave. Reduce both slope_s values equally to make it smoother (eventually turning into a triangle wave)
-	pwm_offset_s = 0, slope_r_s = 12, slope_f_s = 12
-
-	# Sawtooth-like wave. Reduce slope_f_s to make it smoother (eventually turning into a triangle wave).
-	pwm_offset_s = 0, slope_r_s = 0, slope_f_s = 12
-
-	# 25% duty pulse wave. Reduce both slope_s values equally to make it smoother.
-	# Amplitude starts to drop when slope_s < 1.
-	pwm_offset_s = 0.5, slope_r_s = 12, slope_f_s = 12
-
-	# 12.5% duty pulse wave. Reduce both slope_s values equally to make it smoother.
-	# Amplitude starts to drop when slope_s < 2.
-	pwm_offset_s = 0.75, slope_r_s = 12, slope_f_s = 12
-
-	# Sine wave approximation. Varying the amplitude and slope a bit
-	# (while keeping both slopes the same) gives other approximattions.
-	pwm_offset_s = 0, slope_r_s = 0.5, slope_f_s = 0.5
-
-	# Clamped triangle wave. Same spectrum as a triangle wave (but 6 dB louder) at full amplitude,
-	# but timbre starts to become brighter as soon as lowering amplitude from amp_s = 1.
-
-	# Noise. Don't use on channels 0 and 3 at the same time
-	pwm_offset_s = 0, slope_r_s = 0, slope_f_s = 0, {wf1, wf0} = 2'b01
-
-
-**TODO**: Sine wave approximation.
-`pwm_offset_s` can be varied in real time for pulse width modulation. This can be used on any waveform, not just the pulse waves.
-The slopes can be varied in real time to make edges harder or smoother. Increasing the smoothness over time has a similar effect to applying a low pass filter with falling cutoff frequency. Other effects can be achieved by increasing one slope while decreasing the other, such as starting to introduce some even harmonics into a smoothed square wave.
-
-<a name="ext_hw"></a>
-## External hardware
-
-This project needs something that can convert the PWM output into an audio signal, such as [Mike's audio Pmod](https://github.com/MichaelBell/tt-audio-pmod). Make sure to configure the system to output the synth's `pwm_out` signal on the appropriate pin (`uo_out[7]` for Mike's audio Pmod).
-
-For stereo output, both `pwm_out_l` and `pwm_out_r` must be converted into audio signals, and used as the left and right channels respectively. I don't know of any existing Pmod that does this, but it's pretty easy to do on a breadboard. **The important thing is to use a register divider to reduce the 3.3 V output signals to < 1 V. Feeding a 3.3 V signal directly into an audio input might damage it!**. A capacitor per output channel could be added for low pass filtering.
-
 <a name="how_it_works"></a>
 ## How it works
 
@@ -818,6 +766,14 @@ Almost all ALU operations depend on an input from the register file, and reading
 To improve timing, the 2 bit input to the first stage multiplexer, `curr_channel`, is calculated during the previous cycle and stored in a register.
 The `part` register plays a corresponding role for choosing between the two slopes `slope_r` and `slope_f`, and must also be updated one cycle before a read.
 
+The registers are implemented using the modules `pwls_shared_data` and `pwls_register` in [pwl_synth_memory.sv](https://github.com/toivoh/ttsky25a-pwl-synth/blob/main/src/pwl_synth_memory.sv). The first module is used to add any preprocessing needed per bit of the incoming write data. The second module is instantiated once for each register in the register file, with its own write enable condition and output. The actual implementation of the modules depends on which type of latch solution is used, or if a pure RTL implementation is needed instead.
+
+The registers are all initialized to zero at reset, by letting `pwls_shared_data` force the write data input to zero and letting `pwls_register` force the write enable to one during reset.
+
+#### RTL simulation of the register file
+
+For RTL simulation, a (hopefully) equivalent model of the registers is used, based on FFs. To handle the fact that FFs have one cycle of delay more than the P latches used in the actual implementation, the register model needs an extra input that holds the write data one cycle in advance. This is basically the D input to the FFs whose output will feed the P latches, but the muxing between internal and external write data must also be taken into account.
+
 <a name="oscillators"></a>
 ### Oscillators
 
@@ -897,9 +853,6 @@ In these read-modify-write (RMW) operations, the synth reads the corresponding r
 
 To resolve this race condition, external writes are given priority. When an external write occurs during an RMW operation, the synth checks if it is to the same address as the target of the current RMW operation. If so, the `write_collision` register is set, and remains set for the duration the the RMW operation, which blocks the internal write that would normally occur at the end of the operation.
 
-### Specific features
-TODO: anything?
-
 <a name="space_hacks"></a>
 ### Space saving hacks that depend on peripheral interface specifics
 
@@ -920,3 +873,227 @@ In case the synth was to write to a register during the same cycle, the synth is
 This can cause some samples to take a few extra cycles, but only during a short transient:
 The synth program only makes writes at a few time points mod 8. Once the synth has been delayed enough cycles to that writes from TinyQV happen in a cycle mod 8 when the program does not write a register, there should be no further delays.
 The exception is that changing the `stereo_en` or `common_sat` bits can cause the synth program to drift a little, because these bits change the sequencing of the program. These bits should hopefully not have to be changed so frequently that it causes audible effects due to making some samples a few cycles longer.
+
+<a name="dev_tests"></a>
+## Tests used in development
+
+There are a number of different aspects of the synth that need to be tested to make sure that they work:
+
+- Register reads and writes
+- Output signal computation
+	- Oscillators
+	- Waveform shaping
+	- Output accumulation
+	- Sigma-Delta conversion
+- PWM output
+	- Duty cycle (depending on output sample)
+	- Period (should stay at 64 cycles)
+- Parameter sweeps
+- Handling of write collisions
+- `counter` incrementation
+- Register file implementation using latches
+- That the synth sounds as it should
+
+To be able to test these aspects, a number of different kinds of tests were used during development:
+
+- [test.py](https://github.com/toivoh/ttsky25a-pwl-synth/blob/main/test/test.py):
+	- Register reads and writes - write values and read them back
+	- Sanity checks
+		- PWM output
+		- Sweeps
+- Verilator tests:
+	- [Model test](https://github.com/toivoh/ttsky25a-pwl-synth/tree/main/verilator/peripheral-test)
+		- Unit test the synth's core computation steps against C++ model
+			- Exhaustive tests for many of the steps
+		- Run longer sequences with random initial values, comparing RTL results vs C++ model
+	- [Simulation tests](https://github.com/toivoh/ttsky25a-pwl-synth/tree/main/verilator/synth-sim)
+		- Simulate the synth with different register setting sequences, save the results to file for listening
+		- Also check that the PWM output corresponds to the `out_acc` output
+	- [RTL vs GL comparison test](https://github.com/toivoh/ttsky25a-pwl-synth/tree/main/verilator/compare-test)
+		- Send random writes (and reads) to RTL model, record output, check that the results are identical (and not X) in GL simulation
+		- Based on an alternate top level module in [alt_project.sv](https://github.com/toivoh/ttsky25a-pwl-synth/blob/main/src/alt_project.sv), that allows faster read/write access
+- [tb_peripheral.py](https://github.com/toivoh/ttsky25a-pwl-synth/blob/main/test/tb_peripheral.py)
+	- PWM output waveforms for all possible duty cycles for mono (0-64) and stereo (0-32).
+	- Reading of `counter`: Specific scenario, check that the expected values are read back
+- [tb_mc.py](https://github.com/toivoh/ttsky25a-pwl-synth/blob/main/test/tb_mc.py)
+	- Testing of the write collision functionality
+	- Manual inspection of a few different cases to see that the collision works well if the external write arrives early, collides, or arrives too late to collide
+
+The synth contains a number of different parts, and it is assumed that it can mostly be tested by testing some of the parts at a time:
+
+- `test.py` tests that values can be written into registers (also in GL simulation with latches for the register file).
+- The write collision test in `tb_mc.py` tests that writes to the registers are not lost due to write collisions.
+- The model test tests that once the registers are set up, they have the expected effect on the sample calculations in the synth, including oscillators, waveform shaping, parameter sweeps, and output sample value calculation.
+- The PWM output tests in `tb_peripheral` and in the simulation tests test that the calculated output samples are converted to PWM signals as intended.
+- The simulation tests test that
+	- (almost) the whole chain from register writes to sample output works as intended,
+	- the model used in the model test seems to produce the audibly intended results.
+- `test.py` and the `counter` reading tests in `tb_peripheral.py` test that register values can be read back.
+
+One challenge is that the register file is implemented with latches, but only for synthesis. In RTL simulation, including the Verilator simulations, an alternative model based on FFs is used (and the Verilator simulations don't use X values either).
+
+- The comparison test tests that the register file behaves the same in RTL and GL simulation, and that no X values are propagated to the output in GL simulation.
+- `test.py` is the only test that is run in GL simulation against the final TinyQV netlist. It serves as a sanity check for that the register file behaves as intended, that no X values propagate to the PWM outputs, that the PWM output is affected by the registers, and that the parameter sweeps behave more or less as intended.
+
+The model test depends on an additional test interface that is added to the synth when the macro `USE_TEST_INTERFACE` is defined.
+It allows
+
+- External control of
+	- Halting the synth for a given cycle (while allowing external reads and writes to take effect)
+	- The state machine state / program position used for a given cycle
+- Reading and writing the synth's internal registers
+- Reading the register file without waiting for a specific point in the program
+- Access to certain internal registers / signals as outputs, including `acc` and `out_acc`
+
+The unit tests test short (usually 1-2 cycle) parts of the program that perform a certain function (in many cases exhaustively) by setting out the inputs, running the steps, and checking the results by comparing to the model: (and sometimes adding some additional checks)
+
+- Linear and PWL oscillator:
+	- Test one cycle of each period for `octave >= 3` against the model, for the expected period, and some other properties (`octave = 3` is the highest octave that doesn't update the phase each sample)
+	- Test 256 samples of each period for `octave < 3` against the model
+		- The model works the same as for `octave = 3` in this case, this tests that the choice of when to update the oscillators works as intended
+- LFSR oscillator (18 bit):
+	- Test that we get the expected period for two different values of `f_period`
+- Detune: Test all combinations of `detune_exp, detune_fifth`, and effective detune offset values (through `counter`), for both sub-channels, with more or less random phase for each case
+- Triangle + add `pwm_offset`: Test all combinations of `pwm_offset` and input value in `acc`
+- Slope: Test all combinations of `slope_r` and input value in `acc` (`part` is set to 0 so that `slope_r` is used; choosing slope value by `part` is tested in the sequence tests)
+- Amplitude clamp + add to `out_acc`: Test all combinations of `amp` and input value in `acc`, with more or less random intial value in `out_acc`
+- Sweeps: Test all sweep parameters, each with all combinations of sweep parameter value with `rate = 1` and current value of the swept parameter
+	- For `f_period` and `pwm_offset` sweeps, also test that the sweep takes the expected step using a simple model
+	- Test that the number of cases where the swept value changed over the range of original values is as expected
+- `counter` incrementation: Test an interval of +- 4096 around each power of 2 initial value for `counter`
+
+The sequence tests run a number of random sequences, randomizing the initial conditions (avoiding a few combinations of options that I didn't want to model/test), running for a few samples, and checking the values of `acc` and `out_acc` against the model.
+Comparing the values of `acc` and `out_acc` should be enough to catch anything that affects the synth's output (`out_acc` should be enough, but `acc` catches it sooner).
+Sequence lengths of 4 and 34 samples are used. The latter should be enough to sweep each parameter at least once.
+The randomization is skewed so that
+
+- `counter` values close to having many trailing ones are chosen more often, which should trigger updates that are gated on `counter` more often
+- The initial oscillator phase is set to its maximum one 8th of the time, to trigger oscillator sync
+
+If the model or simulation tests fail, a `vcd` file can be written with Verilator, which was very helpful for debugging.
+
+<a name="how_to_test"></a>
+## How to test
+
+First, connect and audio Pmod such as [Mike's audio Pmod](https://github.com/MichaelBell/tt-audio-pmod) and make sure that the synth's PWM output drives the output pin that the Pmod uses (`uo_out[7]` for Mike's audio Pmod).
+
+All registers start at initial value 0, which means that the volume is zero and detuning is off. The synth always plays, and a sound will be output as soon as the volume of a waveform is increased from zero. To make a sound, the amplitude has to be turned up. You can start by setting it to 63 for the channels that you want to play.
+
+https://github.com/toivoh/ttsky25a-pwl-synth/blob/main/docs/pwl_synth.py contains some useful example functions for testing the synth, such as `play_note`, `note_off`, `set_waveform`, `set_period_amp_sweep, set_pwm_slope_sweep`, and `set_cfg`.
+The `set_waveform`, `set_period_amp_sweep, set_pwm_slope_sweep` functions will change the current register values if the note is on, but they will change the current value stored in the example code regardless, so that it can be restored when playing a new note. This way, `set_waveform` can be used to set the initial waveform of a channel, while `set_period_amp_sweep` and `sett_pwm_slope_sweep` can be used to set the sweeps that are active when the note is on. The `note_off` function temporarily turns off the amplitude (and period) sweep so that the note stays off.
+
+The `play_note` function handles a number of things:
+
+- starts by calling `note_off`,
+- calculates `f_period` from a note number or a note name and octave,
+- sets `detune_exp` and `detune_fifth` based on the note a and a relative detuning strength `relative_detune`,
+- restores the waveform parameters `slope_r, slope_f` and `pwm_offset` to what was last set in a call to `set_waveform`, even if sweeps have changed the values afterwards, and
+- restores the sweep parameters.
+
+This example plays a simple melody:
+
+	import time
+	from pwl_synth import *
+
+	notes = [("C", 4), ("G", 4), ("B", 4), ("C", 5)]
+	channel = 0
+	relative_detune = 0  # Try to increase decrease, or set to None to turn off detuning
+
+	# Fade out each note by sweeping down amp. Set amp_rate=0 to keep sustained.
+	set_period_amp_sweep(channel, amp_target=0, amp_rate=12)  # amp_rate = 12 should ramp down in around 0.5 s at 64 MHz clock frequency
+
+	for note in notes:
+		play_note(channel, note, relative_detune=relative_detune)
+
+		time.sleep(0.5)
+	time.sleep(0.5)
+	note_off(channel)
+
+Here is an example that plays a chord by gradually fading in more notes:
+
+	import time
+	from pwl_synth import *
+
+	notes = [("D", 3), ("G", 3), ("C", 4), ("Eb", 4)]
+	relative_detune = 0  # Try to increase decrease, or set to None to turn off detuning
+	for (channel, note) in enumerate(notes):
+		# Fade in each note by sweeping up amp. Takes effect when the next note is played.
+		set_period_amp_sweep(channel, amp_target=63, amp_rate=12)  # amp_rate = 12 should ramp down in around 0.5 s at 64 MHz clock frequency
+
+		play_note(channel, note, amp=0, relative_detune=relative_detune)
+
+		time.sleep(0.5)
+	time.sleep(0.5)
+	all_notes_off()
+
+The default waveform is a triangle wave.
+You can change the waveform of a channel by calling `set_waveform` before running the examples above (for the chord example, make sure to set the waveform for all 4 channels).
+Some example waveforms:
+
+	# Triangle wave.
+	# Timbre initially becomes darker (more sine-like) when lowering amplitude from amp_s = 1.
+	set_waveform(channel, slope_r=0, slope_f=0, pwm_offset=0)
+
+	# 4 bit triangle wave
+	set_waveform(channel, slope_r=0, slope_f=0, pwm_offset=0, osc_sync=OSC_SYNC_4_BIT)
+
+	# Square wave
+	slope = 12*16  # Reduce to make it smoother (eventually turning into a triangle wave)
+	set_waveform(channel, slope_r=slope, slope_f=slope, pwm_offset=0)
+
+	# Sawtooth-like wave
+	slope = 12*16  # Reduce to make it smoother (eventually turning into a triangle wave)
+	set_waveform(channel, slope_r=0, slope_f=slope, pwm_offset=0)
+
+	# 25% duty pulse wave. Reduce both slope_s values equally to make it smoother.
+	# Amplitude starts to drop when slope < 1*16.
+	slope = 12*16  # Reduce to make it smoother
+	set_waveform(channel, slope_r=slope, slope_f=slope, pwm_offset=128)
+
+	# 12.5% duty pulse wave. Reduce both slope_s values equally to make it smoother.
+	# Amplitude starts to drop when slope < 2*16.
+	slope = 12*16  # Reduce to make it smoother
+	set_waveform(channel, slope_r=slope, slope_f=slope, pwm_offset=192)
+
+	# Sine wave approximation. Varying the amplitude and slope a bit
+	# (while keeping both slopes the same) gives other approximattions.
+	set_waveform(channel, slope_r=8, slope_f=8, pwm_offset=0)
+
+	# Clamped triangle wave. Same spectrum as a triangle wave (but 6 dB louder) at full amplitude,
+	# but timbre starts to become brighter as soon as lowering amplitude from amp_s = 1.
+	set_waveform(channel, slope_r=16, slope_f=16, pwm_offset=0)
+
+	# Noise. Don't use on channels 0 and 3 at the same time, note that channels 1 and 2 have noise with a short period (11 bit LFSR)
+	set_waveform(channel, slope_r=0, slope_f=0, pwm_offset=0, waveform=WAVEFORM_NOISE)
+
+	# Sawtooth-like wave with common saturation (works only on channel 0) and (3x, 2x) frequency multiplier (power chord).
+	# Play one octave lower than it is intended to sound, since the frequency multipliers raise the frequency.
+	slope = 12*16  # Reduce to make it smoother
+	set_waveform(channel, slope_r=0, slope_f=slope, pwm_offset=0, freq_multipliers=3, common_sat=True)
+	# Try with set_pwm_slope_sweep(channel, slope_down=True, slope_rate=12)
+
+The slopes can be varied in real time to make edges harder or smoother. Increasing the smoothness over time has a similar effect to applying a low pass filter with falling cutoff frequency. After starting to play a note, you can sweep down the slopes using, e g:
+
+	set_pwm_slope_sweep(channel, slope_down=True, slope_rate=10)  # slope_rate = 10 should be enough to sweep from full slope to zero in about 0.5 s
+
+Rapid downward period sweeps can be used for percussion, e g,
+
+	set_waveform(channel, slope_r=16, slope_f=16)
+	set_period_amp_sweep(channel, period_down=False, period_rate=1, amp_target=0, amp_rate=8)
+	play_note(channel, ("C", 4), amp=63, relative_detune=None)
+
+Noise can also be useful for percussion:
+
+	set_period_amp_sweep(channel, period_down=False, period_rate=1, amp_target=0, amp_rate=10)
+	set_waveform(channel, slope_r=0, slope_f=0, pwm_offset=0, waveform=WAVEFORM_NOISE)
+	play_note(channel, ("B", 7), amp=63, relative_detune=None)
+
+`pwm_offset_s` can be varied in real time for pulse width modulation. This can be used on any waveform, not just the pulse waves.
+Other effects can be achieved by increasing one slope while decreasing the other, such as starting to introduce some even harmonics into a smoothed square wave.
+
+<a name="ext_hw"></a>
+## External hardware
+
+This project needs something that can convert the PWM output into an audio signal, such as [Mike's audio Pmod](https://github.com/MichaelBell/tt-audio-pmod). Make sure to configure the system to output the synth's `pwm_out` signal on the appropriate pin (`uo_out[7]` for Mike's audio Pmod).
+
+For stereo output, both `pwm_out_l` and `pwm_out_r` must be converted into audio signals, and used as the left and right channels respectively. I don't know of any existing Pmod that does this, but it's pretty easy to do on a breadboard. **The important thing is to use a register divider to reduce the 3.3 V output signals to < 1 V. Feeding a 3.3 V signal directly into an audio input might damage it!**. A capacitor per output channel could be added for low pass filtering.
