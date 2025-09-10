@@ -22,34 +22,33 @@ Peripheral index: 33
 <a name="overview"></a>
 ## Overview
 
-PiecewiseOrionSynth is a 4 channel synth that can produce a superset of classic chiptune waveforms and morph between them using 3 parameters. 
-The synth uses mostly piecewise linear waveforms. It builds on many of the ideas of, and can more or less reproduce all of the sounds used in, my Tiny Tapeout demo [Orion Iron Ion](https://youtu.be/VCQJCVPyYjU?si=IOiYqYaK5zWj8HPi) (and many more).
-
-Features:
+PiecewiseOrionSynth is a 4 channel synth that can create a superset of classic chiptune waveforms as well as some synthier sounds.
+The synth uses mostly piecewise linear waveforms, and builds on many of the ideas of my Tiny Tapeout demo [Orion Iron Ion](https://youtu.be/VCQJCVPyYjU?si=IOiYqYaK5zWj8HPi) (it can more or less reproduce all of the sounds used in the demo, along with many others).
 
 - 4 channels
-- 8 Octaves (frequency range ~15 Hz to 3.9 kHz at 64 MHz clock frequency)
+- 8 octaves: frequency range ~15 Hz to 3.9 kHz at 64 MHz clock frequency
 - 1 MHz sample rate at 64 MHz clock frequency
 - Waveforms include square / pulse / triangle / sawtooth-like waveforms
-	- Each channel has 3 parameters that can be used to morph between these waveforms, and some others
+	- 3 parameters per channel that can be used to morph between these and other waveforms
 	- Sweep rates for all parameters
-	- Varying the slope has a similar effect to using a lowpass filter with varying cutoff frequency, changing the brightness of the sound
+	- Waveform slope can be varied to produce a similar effect as varying the cutoff frequency of a lowpass filter, changing the brightness of the sound
 - Additional waveforms:
 	- Noise
-	- Orion Wave (a generalized version of the background sound in the Orion Iron Ion demo)
+	- Orion Wave (a generalized version of the background sound in the [Orion Iron Ion](https://youtu.be/VCQJCVPyYjU?si=IOiYqYaK5zWj8HPi) demo)
 - Volume per channel, with sweep rate and target value
 - Frequency sweep per channel
-- Option to quantize each channel to 4 bits (e g, to approximate the NES triangle wave)
+- Option to quantize each channel to 4 bits (can, e g, approximate the NES triangle wave)
 - Hard/soft oscillator sync
 - Stereo mode with five stereo positions per channel
-- Two sub-channels per channel:
+- Each channel has two sub-channels that are added to the output, and can produce variations on the same waveform:
 	- Detune function: Plays the waveforms at two slightly different pitches for added depth
-	- Frequency multipliers: Options to multiply the oscillator frequencies for the two subchannels with different multipliers: `(1x, 1x) / (1x, 2x) / (1x, 4x) / (1x, 8x) / (3x, 1x) / (3x, 2x) / (3x, 4x) / (3x, 8x)` to produce octaves or thirds using a single channel
+	- Frequency multipliers: Options to multiply the oscillator frequencies for the two subchannels with different multipliers
+		(1x or 3x for first sub-channel, 1x / 2x / 4x / 8x for second) to produce octaves or thirds with a single channel
 	- In stereo position mode, can output one sub channel left and one right (stereo voice), or mix both in both
 - Common saturation function for channel 0:
-	- Mono mode: Creates distortion between the two sub-channels (useful with `(3x, 2x)` and `(3x, 4x)` frequency multipliers)
-	- Stereo mode: Creates distortion between channels 0 and 1
-- 10 bit PWM output (formed by adding 7 bit outputs from the 8 sub-channels)
+	- In mono mode: Creates distortion between the two sub-channels (useful, e g, with `(3x, 2x)` and `(3x, 4x)` frequency multipliers for power chords)
+	- In stereo mode: Creates distortion between channels 0 and 1
+- 10 bit PWM output, formed by adding 7 bit outputs from the 8 sub-channels
 - Designed to reduce / avoid quantization artifacts from limited PWM output resolution
 	- Piecewise linear oscillator mode more or less eliminates quantization artifacts (and gives some color change)
 
@@ -72,7 +71,7 @@ Features:
 	- [Sweeping parameter values](#sweeping)
 - [Additional synth functions](#additional_functions)
 	- [Stereo mode](#stereo_mode)
-	- [Frequency multipliers](#freq_multipliers)
+	- [Frequency multipliers](#freq_mults)
 	- [Common saturation](#common_sat)
 	- [4 bit mode](#4bit_mode)
 	- [Orion Wave](#orion_wave)
@@ -112,8 +111,8 @@ Each of the four channels has the same register layout, starting at offsets mult
 | 0x06    | `slope_f[0]`     | RW     | Falling slope                   |       0 |  8        |
 | 0x08    | `pwm_offset[0]`  | RW     | PWM offset                      |       0 |  8        |
 | 0x0a    | `mode[0]`        | W      | Mode                            |       0 | 12        |
-| 0x0c    | `sweep_pa[0]`    | W      | Period and amplitude sweep rates|       0 | 13        |
-| 0x0e    | `sweep_ws[0]`    | W      | PWM offset and slope sweep rates|       0 | 13        |
+| 0x0c    | `sweep_pa[0]`    | W      | Period, amplitude sweep rate    |       0 | 13        |
+| 0x0e    | `sweep_ws[0]`    | W      | PWM offset, slope sweep rate    |       0 | 13        |
 |         |                  |        |                                 |         |           |
 | 0x10    | `f_period[1]`    | RW     | Period                          |       1 | 13        |
 | 0x11    | `phase[1]`       | RW     | Phase                           |       1 | 12        |
@@ -122,8 +121,8 @@ Each of the four channels has the same register layout, starting at offsets mult
 | 0x16    | `slope_f[1]`     | RW     | Falling slope                   |       1 |  8        |
 | 0x18    | `pwm_offset[1]`  | RW     | PWM offset                      |       1 |  8        |
 | 0x1a    | `mode[1]`        | W      | Mode                            |       1 | 12        |
-| 0x1c    | `sweep_pa[1]`    | W      | Period and amplitude sweep rates|       1 | 13        |
-| 0x1e    | `sweep_ws[1]`    | W      | PWM offset and slope sweep rates|       1 | 13        |
+| 0x1c    | `sweep_pa[1]`    | W      | Period, amplitude sweep rate    |       1 | 13        |
+| 0x1e    | `sweep_ws[1]`    | W      | PWM offset, slope sweep rate    |       1 | 13        |
 |         |                  |        |                                 |         |           |
 | 0x20    | `f_period[2]`    | RW     | Period                          |       2 | 13        |
 | 0x21    | `phase[2]`       | RW     | Phase                           |       2 | 12        |
@@ -132,8 +131,8 @@ Each of the four channels has the same register layout, starting at offsets mult
 | 0x26    | `slope_f[2]`     | RW     | Falling slope                   |       2 |  8        |
 | 0x28    | `pwm_offset[2]`  | RW     | PWM offset                      |       2 |  8        |
 | 0x2a    | `mode[2]`        | W      | Mode                            |       2 | 12        |
-| 0x2c    | `sweep_pa[2]`    | W      | Period and amplitude sweep rates|       2 | 13        |
-| 0x2e    | `sweep_ws[2]`    | W      | PWM offset and slope sweep rates|       2 | 13        |
+| 0x2c    | `sweep_pa[2]`    | W      | Period, amplitude sweep rate    |       2 | 13        |
+| 0x2e    | `sweep_ws[2]`    | W      | PWM offset, slope sweep rate    |       2 | 13        |
 |         |                  |        |                                 |         |           |
 | 0x30    | `f_period[3]`    | RW     | Period                          |       3 | 13        |
 | 0x31    | `phase[3]`       | RW     | Phase                           |       3 | 12        |
@@ -142,15 +141,15 @@ Each of the four channels has the same register layout, starting at offsets mult
 | 0x36    | `slope_f[3]`     | RW     | Falling slope                   |       3 |  8        |
 | 0x38    | `pwm_offset[3]`  | RW     | PWM offset                      |       3 |  8        |
 | 0x3a    | `mode[3]`        | W      | Mode                            |       3 | 12        |
-| 0x3c    | `sweep_pa[3]`    | W      | Period and amplitude sweep rates|       3 | 13        |
-| 0x3e    | `sweep_ws[3]`    | W      | PWM offset and slope sweep rates|       3 | 13        |
+| 0x3c    | `sweep_pa[3]`    | W      | Period, amplitude sweep rates   |       3 | 13        |
+| 0x3e    | `sweep_ws[3]`    | W      | PWM offset, slope sweep rates   |       3 | 13        |
 |         |                  |        |                                 |         |           |
 | 0x03    | `counter[11:0]`  | RW     | Sample counter, lower half      |       - | 12        |
 | 0x13    | `counter[23:12]` | RW     | Sample counter, upper half      |       - | 12        |
 | 0x23    | `cfg`            | W      | Global configuration            |       - |  2        |
 
 - All registers have zero initial values.
-- All sizes (8/16/32 bits) of reads and writes are recognized by the synth, but will only access the register at the given address.
+- All sizes of reads and writes (8/16/32 bits) are recognized by the synth, but will only access the register at the specified address.
 	- 32 bit writes discard the upper 16 bits, while 32 bit reads return zeros in the upper 16 bits.
 	- Avoid using 8 bit writes on registers that are bigger than 8 bits: the whole register will be written, but the values written to bits 8 and above are unspecified.
 - All registers that can be updated by the synth itself are read/write, while registers that can only be updated by external writes are read only.
@@ -163,8 +162,8 @@ The layouts of the mode registers is
 
 | Register      | bits: 11       | 10:9       | 8     | 7            | 6:4                 | 3     |        2:0   |
 |---------------|----------------|------------|-------|--------------|---------------------|-------|--------------|
-| `mode`        | `detune_fifth` | `osc_sync` | `wf1` | `common_sat` | `freq_multipliers`  | `wf0` | `detune_exp` |
-|               |                |            |       |              | / `stereo_position` |       |              |
+| `mode`        | `detune_5th`   | `osc_sync` | `wf1` | `common_sat` | `freq_mults`        | `wf0` | `detune_exp` |
+|               |                |            |       |              | / `stereo_pos`      |       |              |
 
 The `waveform` field consists of the two bits `{wf1, wf0}`. The `waveform` and `osc_sync` fields affect the waveform and oscillators in different ways:
 
@@ -186,11 +185,13 @@ The sweep registers are laid out according to
 
 | register       | bits:        12 |             11:8 | 7 |           6:4 |         3:0 |
 |----------------|-----------------|------------------|---|---------------|-------------|
-| `sweep_pa`     |`f_period`: sign | `f_period`: rate | X | `amp`: target | `amp`: rate |
+| `sweep_pa`     | `f_period`:     | `f_period`:      | X | `amp`:        | `amp`:      |
+|                | sign            | rate             |   | target        | rate        |
 
 | register       | bits:          12 |               11:8 | 7 |         6:5 |            4 |          3:0 |
 |----------------|-------------------|--------------------|---|-------------|--------------|--------------|
-| `sweep_ws`     |`pwm_offset`: sign | `pwm_offset`: rate | X | slopes: dir | slopes: sign | slopes: rate |
+| `sweep_ws`     | `pwm_offset`:     | `pwm_offset`:      | X | slopes:     | slopes:      | slopes:      |
+| `sweep_ws`     | sign              | rate               |   | `dir`       | sign         | rate         |
 
 <a name="cfg_fields"></a>
 ### Config register fields
@@ -204,7 +205,7 @@ The `cfg` register controls mono/stereo mode:
 ### Register differences between channels
 The channels work mostly the same, but some functionalities are only available for some channels, and the noise function is a bit different between them:
 
-| Channel            | LFSR (noise)    | `common_sat` | `osc_sync` | `detune_fifth` |
+| Channel            | LFSR (noise)    | `common_sat` | `osc_sync` | `detune_5th`   |
 |--------------------|-----------------|--------------|------------|----------------|
 | 0                  | 18 bit (shared) | yes          | yes        | yes            |
 | 1                  | 11 bit          | no           | no         | no             |
@@ -306,11 +307,11 @@ Detuning is used to create a small frequency difference between the two sub-chan
 The delta frequency between the two sub-channels should be more or less proportional to the note frequecy being played.
 The delta frequency for a channel can set with `detune_exp`, each increase by one causes a doubling, except that `detune_exp = 0` turns off detuning.
 
-For channels that support it, setting `detune_fifth = 1` can be used as an intermediate step between doublings, multiplying the delta frequency by 1.5.
-(The case when `detune_exp = 0, detune_fifth = 1` has half the delta frequency of `detune_exp = 1, detune_fifth = 0`).
-The case `detune_exp = 7, detune_fifth = 1` should produce detuning at 1.5 the rate of `detune_exp = 7, detune_fifth = 0`, but there will be an error in bit 0 of the 12 bit phase after detuning.
+For channels that support it, setting `detune_5th = 1` can be used as an intermediate step between doublings, multiplying the delta frequency by 1.5.
+(The case when `detune_exp = 0, detune_5th = 1` has half the delta frequency of `detune_exp = 1, detune_5th = 0`).
+The case `detune_exp = 7, detune_5th = 1` should produce detuning at 1.5 the rate of `detune_exp = 7, detune_5th = 0`, but there will be an error in bit 0 of the 12 bit phase after detuning.
 
-In the default signal flow, the delta frequency when `detune_fifth = 0, detune_exp > 0` is given by
+In the default signal flow, the delta frequency when `detune_5th = 0, detune_exp > 0` is given by
 
 	delta_frequency = fs * 2^(detune_exp - 24)
 
@@ -318,14 +319,15 @@ which goes from around 0.12 Hz to 7.6 Hz, as `detune_exp` goes from 1 to 7 (with
 
 The relative delta frequency becomes
 
-	delta_frequency / f = 2^(detune_exp - 24) * (2^(period_exp - 2) * (1024 + mantissa))
-						= 2^(detune_exp - 24) * (2^(5 - octave) * (1024 + mantissa))
-						= 2^(detune_exp - octave) * (1024 + mantissa) * 2^-19
-						= 2^-8 * (1024 + mantissa) / 2048 * 2^(detune_exp - octave)
+	delta_frequency / f
+	  = 2^(detune_exp - 24) * (2^(period_exp - 2) * (1024 + mantissa))
+	  = 2^(detune_exp - 24) * (2^(5 - octave) * (1024 + mantissa))
+	  = 2^(detune_exp - octave) * (1024 + mantissa) * 2^-19
+	  = 2^-8 * (1024 + mantissa) / 2048 * 2^(detune_exp - octave)
 
 Setting `detune_exp = octave` gives a relative delta frequency of `2^-9` to `2^-8`, depending on `mantissa`, or 3.4 to 6.7 cents difference in pitch between the two sub-channels, which shouldn't be excessive, at least the double (`detune_exp = min(7, octave + 1)`) should be useful as well. Lower detuning values can of course be used if less detuning is desired.
 
-See below for how `freq_multipliers` affects the delta frequency. The general effect is that if it is turned on, no detuning is applied through sub-channel 0, halving the delta frequency so that `detune_exp` should be increased by one to achieve the same effect. The fundamental frequency is also changed, but in some cases the detuning is scaled to compensate.
+See below for how `freq_mults` affects the delta frequency. The general effect is that if it is turned on, no detuning is applied through sub-channel 0, halving the delta frequency so that `detune_exp` should be increased by one to achieve the same effect. The fundamental frequency is also changed, but in some cases the detuning is scaled to compensate.
 
 #### Pseudocode
 The pseudocode below is expressed in terms of rescaled register values
@@ -340,15 +342,18 @@ The calculations for the default signal path can be described according to the f
 	y = phase_s
 	# y = sawtooth wave or noise, 0 <= y <= 1
 
-	# Detune. The waveform is calculated with detune_sign = -1 for sub-channel 0, and with detune_sign = +1 for sub-channel 1. 
-	# If detune_fifth=1, detune_sign = -2 is used for sub-channel 0, causing 1.5x as much detuning.
-	if detune_exp != 0 or (sub_channel == 0 and detune_fifth != 0):
+	# Detune. The waveform is calculated with detune_sign = -1
+	# for sub-channel 0, and with detune_sign = +1 for sub-channel 1. 
+	# If detune_5th=1, detune_sign = -2 is used for sub-channel 0,
+	# causing 1.5x as much detuning.
+	if detune_exp != 0 or (sub_channel == 0 and detune_5th != 0):
 		y = wrap(y + detune_sign * sample_counter * 2^(detune_exp - 25))
 	# y = sawtooth wave, 0 <= y <= 1
 
 	# Phase to triangle wave
 	y = y * 2
-	part = 0  # keeps track on if we are on the rising edge (0) or falling edge (1) of the waveform
+	# keep track on if we are on the rising (0) or falling edge (1) of the waveform
+	part = 0
 	if y >= 1:
 		y = 2 - y
 		part = 1
@@ -361,15 +366,18 @@ The calculations for the default signal path can be described according to the f
 	# y = triangle wave with DC offset, clamped to y <= 1
 
 	# Increase slope, clamp to -1 <= y <= 1.
-	## The slope value used depends on if we are on the rising or falling edge of the waveform.
+	## The slope value used depends on if we are
+	## on the rising or falling edge of the waveform.
 	slope_s = slope_f_s if part else slope_r_s
-	## The slope update behaves approximately like y = saturate(2^slope_s * y), but uses a piecewise linear approximation
+	## The slope update behaves approximately like
+	## y = saturate(2^slope_s * y), but uses a piecewise linear approximation
 	## Split the slope into integer and fractional parts
 	slope_int = floor(slope_s)
 	slope_frac = slope_s - slope_int
 	## Apply the integer slope
 	y = saturate(2^slope_int * y)
-	## Apply the fractional slope. slope_frac = 0 ==> no change, slope_frac = 1 ==> y = 2y
+	## Apply the fractional slope:
+	## slope_frac = 0 ==> no change, ... , slope_frac = 1 ==> y = 2y
 	y = saturate(clamp(2*y, -slope_frac/2, slope_frac/2))
 
 	# Volume clamp
@@ -417,11 +425,11 @@ Setting `stereo_en = 1` in the `cfg` register enables stereo mode. In this mod, 
 Combined with detuning, this create a stereo voice for each channel, creating a stereo effect even when all voices are placed in the center (default).
 
 The stereo position of each channel can be controlled by turning on `stereo_pos_en = 1` in the `cfg` register.
-In this case, the `freq_multipliers` /`stereo_position` field in the `mode` register sets the channel's stereo position: (while the frequency multipliers remain at their default (1x, 1x) value)
+In this case, the `freq_mults` /`stereo_pos` field in the `mode` register sets the channel's stereo position: (while the frequency multipliers remain at their default (1x, 1x) value)
 
-| Field             | Value | Position   | Stereo voice | Left amplitude | Right amplitude |
+| `stereo_pos`      | Value | Position   | Stereo voice | Left amplitude | Right amplitude |
 |-------------------|-------|------------|--------------|----------------|-----------------|
-| `stereo_position` | 0     | 0 (left)   | no           | 100%           |   0%            |
+|                   | 0     | 0 (left)   | no           | 100%           |   0%            |
 |                   | 1     | 1          | no           | 100%           |  50%            |
 |                   | 2     | 2 (center) | no           | 100%           | 100%            |
 |                   | 3     | 3          | no           |  50%           | 100%            |
@@ -430,19 +438,19 @@ In this case, the `freq_multipliers` /`stereo_position` field in the `mode` regi
 |                   | 6     | 2 (center) | yes          | 100%           | 100%            |
 |                   | 7     | 3          | yes          |  50%           | 100%            |
 
-For the cases where "Stereo voice: no" is specified above, both sub-channels alternate the sign of detuning every sample. This causes interference between the two detuned frequencies in each channel (as in the mono case), but looses the stereo voice effect. There is no option for "Stereo voice: yes" for the left (0) and right (4) positions, since the same effect can be achieved by turning off detuning (`detune_exp = detune_fifth = 0`).
+For the cases where "Stereo voice: no" is specified above, both sub-channels alternate the sign of detuning every sample. This causes interference between the two detuned frequencies in each channel (as in the mono case), but looses the stereo voice effect. There is no option for "Stereo voice: yes" for the left (0) and right (4) positions, since the same effect can be achieved by turning off detuning (`detune_exp = detune_5th = 0`).
 
-<a name="freq_multipliers"></a>
+<a name="freq_mults"></a>
 ### Frequency multipliers
 
-When `stereo_pos_en = 0`, the `freq_multipliers` /`stereo_position` field in the `mode` register can be used to apply different frequency multipliers to the two sub-channels.
+When `stereo_pos_en = 0`, the `freq_mults` /`stereo_pos` field in the `mode` register can be used to apply different frequency multipliers to the two sub-channels.
 This can be used to play octaves / fifths / fourths using a single channel. The multipliers `(3x, 2x)` and `(3x, 4x)` represent a just intonation perfect fifth / fourth respectively (which is what can be easily calculated), with sub-channel 0 approximately 702 cents and -498 cents above sub-channel 1, respectively.
 Detuning will pull towards (and beyond) the equal tempered perfect fifth / fourth at 700 cents and -500 cents.
 Frequency multipliers are useful together with `common_sat = 1`, to play distorted power chords or distorted detuned octaves.
 
-Sub-channel zero can apply a 1x or 3x multiplier (controlled by `freq_multipliers[0]`), while sub-channel 1 can apply a 1x, 2x, 4x, or 8x multiplier (controlled by `freq_multipliers[2:1]`):
+Sub-channel zero can apply a 1x or 3x multiplier (controlled by `freq_mults[0]`), while sub-channel 1 can apply a 1x, 2x, 4x, or 8x multiplier (controlled by `freq_mults[2:1]`):
 
-| `freq_multipliers`     | Value | (Sub-channel 0 multiplier, Sub-channel 1 multiplier) |
+| `freq_mults`           | Value | (Sub-channel 0 multiplier, Sub-channel 1 multiplier) |
 |------------------------|-------|------------------------------------------------------|
 |                        | 0     | (1x, 1x) frequency                                   |
 |                        | 1     | (3x, 1x) frequency                                   |
@@ -454,7 +462,7 @@ Sub-channel zero can apply a 1x or 3x multiplier (controlled by `freq_multiplier
 |                        | 7     | (3x, 8x) frequency                                   |
 
 Sub-channel 0 is unaffacted by detuning in all cases except `(1x, 1x)`.
-When `freq_multipliers[0] = 1` (3x mode) and `detune_fifth = 1`, a 5x multiplier is used instead of the 3x multiplier, giving access to a just intonation major third (5x, 4x). (This was a bit of a spurious feature caused by how the `detune_fifth` and 3x features are implemented.)
+When `freq_mults[0] = 1` (3x mode) and `detune_5th = 1`, a 5x multiplier is used instead of the 3x multiplier, giving access to a just intonation major third (5x, 4x). (This was a bit of a spurious feature caused by how the `detune_5th` and 3x features are implemented.)
 Since detuning is applied to sub-channel 1 before the frequency multiplier, the detuning frequency will increase with the sub-channel's frequency multiplier.
 
 <a name="common_sat"></a>
@@ -466,7 +474,7 @@ When `common_sat = 1`, instead of applying amplitude clamping individually, the 
 In stereo mode, the same operation is applied within the two sub-channels, combining the outputs of channel 0 and 1 for sub-channel 0 and 1 separately.
 
 This effect creates distortion between the combined signals. It is probably most useful when the frequency ratio between the two signals is close to (but not exactly) a simple integer ratio.
-In the mono case, this ratio can be achieved with `freq_multipliers` plus detuning.
+In the mono case, this ratio can be achieved with `freq_mults` plus detuning.
 In the stereo case, the frequency ratio is of course controlled by setting frequencies for channels 0 individually. Detuning is still useful to make the left and right outputs differ, but will not affect the frequency ratio in the distortion effect.
 
 <a name="4bit_mode"></a>
@@ -953,7 +961,7 @@ The unit tests test short (usually 1-2 cycle) parts of the program that perform 
 		- The model works the same as for `octave = 3` in this case, this tests that the choice of when to update the oscillators works as intended
 - LFSR oscillator (18 bit):
 	- Test that we get the expected period for two different values of `f_period`
-- Detune: Test all combinations of `detune_exp, detune_fifth`, and effective detune offset values (through `counter`), for both sub-channels, with more or less random phase for each case
+- Detune: Test all combinations of `detune_exp, detune_5th`, and effective detune offset values (through `counter`), for both sub-channels, with more or less random phase for each case
 - Triangle + add `pwm_offset`: Test all combinations of `pwm_offset` and input value in `acc`
 - Slope: Test all combinations of `slope_r` and input value in `acc` (`part` is set to 0 so that `slope_r` is used; choosing slope value by `part` is tested in the sequence tests)
 - Amplitude clamp + add to `out_acc`: Test all combinations of `amp` and input value in `acc`, with more or less random intial value in `out_acc`
@@ -986,7 +994,7 @@ The `play_note` function handles a number of things:
 
 - starts by calling `note_off`,
 - calculates `f_period` from a note number or a note name and octave,
-- sets `detune_exp` and `detune_fifth` based on the note a and a relative detuning strength `relative_detune`,
+- sets `detune_exp` and `detune_5th` based on the note a and a relative detuning strength `relative_detune`,
 - restores the waveform parameters `slope_r, slope_f` and `pwm_offset` to what was last set in a call to `set_waveform`, even if sweeps have changed the values afterwards, and
 - restores the sweep parameters.
 
@@ -997,10 +1005,13 @@ This example plays a simple melody:
 
 	notes = [("C", 4), ("G", 4), ("B", 4), ("C", 5)]
 	channel = 0
-	relative_detune = 0  # Try to increase decrease, or set to None to turn off detuning
+	# Try to increase decrease, or set to None to turn off detuning
+	relative_detune = 0
 
-	# Fade out each note by sweeping down amp. Set amp_rate=0 to keep sustained.
-	set_period_amp_sweep(channel, amp_target=0, amp_rate=12)  # amp_rate = 12 should ramp down in around 0.5 s at 64 MHz clock frequency
+	# Fade out each note by sweeping down amp.
+	# Set amp_rate=0 to keep sustained.
+	# amp_rate = 12 should ramp down in around 0.5 s at 64 MHz clock
+	set_period_amp_sweep(channel, amp_target=0, amp_rate=12)
 
 	for note in notes:
 		play_note(channel, note, relative_detune=relative_detune)
@@ -1015,10 +1026,15 @@ Here is an example that plays a chord by gradually fading in more notes:
 	from pwl_synth import *
 
 	notes = [("D", 3), ("G", 3), ("C", 4), ("Eb", 4)]
-	relative_detune = 0  # Try to increase decrease, or set to None to turn off detuning
+
+	# Try to increase / decrease, or set to None to turn off detuning
+	relative_detune = 0
+
 	for (channel, note) in enumerate(notes):
-		# Fade in each note by sweeping up amp. Takes effect when the next note is played.
-		set_period_amp_sweep(channel, amp_target=63, amp_rate=12)  # amp_rate = 12 should ramp down in around 0.5 s at 64 MHz clock frequency
+		# Fade in each note by sweeping up amp.
+		# Takes effect when the next note is played.
+		# amp_rate = 12 should ramp down in around 0.5 s at 64 MHz clock
+		set_period_amp_sweep(channel, amp_target=63, amp_rate=12)
 
 		play_note(channel, note, amp=0, relative_detune=relative_detune)
 
@@ -1031,26 +1047,32 @@ You can change the waveform of a channel by calling `set_waveform` before runnin
 Some example waveforms:
 
 	# Triangle wave.
-	# Timbre initially becomes darker (more sine-like) when lowering amplitude from amp_s = 1.
+	# Timbre initially becomes darker (more sine-like)
+	# when lowering amplitude from amp_s = 1.
 	set_waveform(channel, slope_r=0, slope_f=0, pwm_offset=0)
 
 	# 4 bit triangle wave
-	set_waveform(channel, slope_r=0, slope_f=0, pwm_offset=0, osc_sync=OSC_SYNC_4_BIT)
+	set_waveform(channel, slope_r=0, slope_f=0, pwm_offset=0,
+		osc_sync=OSC_SYNC_4_BIT)
 
 	# Square wave
-	slope = 12*16  # Reduce to make it smoother (eventually turning into a triangle wave)
+	# Reduce slope to make it smoother
+	# (eventually turning into a triangle wave)
+	slope = 12*16
 	set_waveform(channel, slope_r=slope, slope_f=slope, pwm_offset=0)
 
 	# Sawtooth-like wave
-	slope = 12*16  # Reduce to make it smoother (eventually turning into a triangle wave)
+	# Reduce to make it smoother
+	# (eventually turning into a triangle wave)
+	slope = 12*16
 	set_waveform(channel, slope_r=0, slope_f=slope, pwm_offset=0)
 
-	# 25% duty pulse wave. Reduce both slope_s values equally to make it smoother.
+	# 25% duty pulse wave
 	# Amplitude starts to drop when slope < 1*16.
 	slope = 12*16  # Reduce to make it smoother
 	set_waveform(channel, slope_r=slope, slope_f=slope, pwm_offset=128)
 
-	# 12.5% duty pulse wave. Reduce both slope_s values equally to make it smoother.
+	# 12.5% duty pulse wave
 	# Amplitude starts to drop when slope < 2*16.
 	slope = 12*16  # Reduce to make it smoother
 	set_waveform(channel, slope_r=slope, slope_f=slope, pwm_offset=192)
@@ -1059,33 +1081,42 @@ Some example waveforms:
 	# (while keeping both slopes the same) gives other approximattions.
 	set_waveform(channel, slope_r=8, slope_f=8, pwm_offset=0)
 
-	# Clamped triangle wave. Same spectrum as a triangle wave (but 6 dB louder) at full amplitude,
-	# but timbre starts to become brighter as soon as lowering amplitude from amp_s = 1.
+	# Clamped triangle wave. Same spectrum as a triangle wave
+	# (but 6 dB louder) at full amplitude, but timbre starts to
+	# become brighter as soon as lowering amplitude from amp_s = 1.
 	set_waveform(channel, slope_r=16, slope_f=16, pwm_offset=0)
 
-	# Noise. Don't use on channels 0 and 3 at the same time, note that channels 1 and 2 have noise with a short period (11 bit LFSR)
-	set_waveform(channel, slope_r=0, slope_f=0, pwm_offset=0, waveform=WAVEFORM_NOISE)
+	# Noise. Don't use on channels 0 and 3 at the same time, note that
+	# channels 1 and 2 have noise with a short period (11 bit LFSR)
+	set_waveform(channel, slope_r=0, slope_f=0, pwm_offset=0,
+		waveform=WAVEFORM_NOISE)
 
-	# Sawtooth-like wave with common saturation (works only on channel 0) and (3x, 2x) frequency multiplier (power chord).
-	# Play one octave lower than it is intended to sound, since the frequency multipliers raise the frequency.
+	# Sawtooth-like wave with common saturation (works only on channel 0)
+	# and (3x, 2x) frequency multiplier (power chord).
+	# Play one octave lower than it is intended to sound,
+	# since the frequency multipliers raise the frequency.
 	slope = 12*16  # Reduce to make it smoother
-	set_waveform(channel, slope_r=0, slope_f=slope, pwm_offset=0, freq_multipliers=3, common_sat=True)
+	set_waveform(channel, slope_r=0, slope_f=slope, pwm_offset=0, freq_mults=3, common_sat=True)
 	# Try with set_pwm_slope_sweep(channel, slope_down=True, slope_rate=12)
 
 The slopes can be varied in real time to make edges harder or smoother. Increasing the smoothness over time has a similar effect to applying a low pass filter with falling cutoff frequency. After starting to play a note, you can sweep down the slopes using, e g:
 
-	set_pwm_slope_sweep(channel, slope_down=True, slope_rate=10)  # slope_rate = 10 should be enough to sweep from full slope to zero in about 0.5 s
+	# slope_rate = 10 should be enough
+	# to sweep from full slope to zero in about 0.5 s
+	set_pwm_slope_sweep(channel, slope_down=True, slope_rate=10)
 
 Rapid downward period sweeps can be used for percussion, e g,
 
 	set_waveform(channel, slope_r=16, slope_f=16)
-	set_period_amp_sweep(channel, period_down=False, period_rate=1, amp_target=0, amp_rate=8)
+	set_period_amp_sweep(channel, period_down=False, period_rate=1,
+		amp_target=0, amp_rate=8)
 	play_note(channel, ("C", 4), amp=63, relative_detune=None)
 
 Noise can also be useful for percussion:
 
-	set_period_amp_sweep(channel, period_down=False, period_rate=1, amp_target=0, amp_rate=10)
-	set_waveform(channel, slope_r=0, slope_f=0, pwm_offset=0, waveform=WAVEFORM_NOISE)
+	set_period_amp_sweep(channel, period_down=False, period_rate=1,
+		amp_target=0, amp_rate=10)
+	set_waveform(channel, waveform=WAVEFORM_NOISE)
 	play_note(channel, ("B", 7), amp=63, relative_detune=None)
 
 `pwm_offset_s` can be varied in real time for pulse width modulation. This can be used on any waveform, not just the pulse waves.

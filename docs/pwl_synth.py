@@ -104,7 +104,7 @@ def play_note(channel, note, amp=63, relative_detune=0):
 	# Update detune_exp and possibly detune_fifth
 	mode = curr_modes[channel]
 	mode = (mode & ~7) | (detune_f >> 1)
-	if (curr_cfg & CFG_STEREO_POS_EN) != 0 or (mode & 7 << 4) == 0: # set detune_fifth when not using freq_multipliers (including when stereo position mode is on)
+	if (curr_cfg & CFG_STEREO_POS_EN) != 0 or (mode & 7 << 4) == 0: # set detune_fifth when not using freq_mults (including when stereo position mode is on)
 		mode = (mode & ~2048) | ((detune_f&1) << 11)
 	curr_modes[channel] = mode
 
@@ -115,8 +115,8 @@ def play_note(channel, note, amp=63, relative_detune=0):
 	reg_write(channel, REG_SWEEP_PA, curr_sweep_pa[channel])
 	reg_write(channel, REG_SWEEP_WS, curr_sweep_ws[channel])
 
-def set_waveform(channel, slope_r=0, slope_f=0, pwm_offset=0, detune_exp=0, waveform=0, freq_multipliers=0, common_sat=False, osc_sync=0, detune_fifth=False):
-	mode = (detune_exp&7) | ((waveform&1)<<3) | ((freq_multipliers&7)<<4) | ((common_sat&1)<<7) | ((waveform&2)<<7) | ((osc_sync&3)<<9) | ((detune_fifth&1)<<11)
+def set_waveform(channel, slope_r=0, slope_f=0, pwm_offset=0, detune_exp=0, waveform=0, freq_mults=0, common_sat=False, osc_sync=0, detune_fifth=False):
+	mode = (detune_exp&7) | ((waveform&1)<<3) | ((freq_mults&7)<<4) | ((common_sat&1)<<7) | ((waveform&2)<<7) | ((osc_sync&3)<<9) | ((detune_fifth&1)<<11)
 
 	curr_slopes_r[channel] = slope_r
 	curr_slopes_f[channel] = slope_f
