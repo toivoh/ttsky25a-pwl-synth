@@ -475,7 +475,7 @@ Since detuning is applied to sub-channel 1 before the frequency multiplier, the 
 <a name="common_sat"></a>
 ### Common saturation
 
-![Signal flow changes when common_sat = 1](PWOrionSynth-voice-common_sat.png)
+![Signal flow changes when common_sat = 1](PWOrionSynth-voice-common_sat2.png)
 
 When `common_sat = 1`, instead of applying amplitude clamping individually, the outputs of the two sub-channels for channel 0 are added together and saturated before contributing to the output. The signal is also multiplied by 2, since it replaces the output of two sub-channels.
 In stereo mode, the same operation is applied within the two sub-channels but between channels 0 and 1, combining the outputs of channel 0 and 1 for sub-channel 0 and 1 separately.
