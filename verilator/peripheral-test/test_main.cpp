@@ -22,6 +22,7 @@
 //#define DEBUG_AMP_CLAMP
 //#define DEBUG_ADD_COMMON_SAT
 
+
 #define TEST_SLOPE
 #define TEST_DETUNE
 #define TEST_AMP_OUT
@@ -38,6 +39,7 @@
 const int seq_extra_exp = 0;
 
 
+//#define USE_P_LATCHES_ONLY
 #define USE_NEW_READ
 #define USE_ORION_WAVE
 #define USE_ORION_WAVE_MASK
@@ -45,7 +47,7 @@ const int seq_extra_exp = 0;
 #define USE_OCT_COUNTER_LATCHES
 #define USE_OSC_SYNC
 #define USE_4_BIT_MODE
-#define USE_OSC_SYNC_ONLY_FOR_SOME_CHANNELS
+//#define USE_OSC_SYNC_ONLY_FOR_SOME_CHANNELS
 #define USE_SWAPPED_DETUNE_SIGNS
 #define USE_COMMON_SAT_STEREO
 #define USE_DETUNE_FIFTH
@@ -367,7 +369,7 @@ void model_oscillator(Model &m) {
 		sync_phase &= ((1 << BITS) - 1);
 		//m.acc = sync_phase & ((1 << BITS) - 1);
 #ifdef DEBUG_OSC
-		printf("sync_phase = 0x%x", sync_phase);
+		printf("sync_phase = 0x%x ", sync_phase);
 #endif
 		if (!lfsr_en) m.last_osc_wrapped = 1; // The inversion of src1 sets carry_out
 	}
@@ -498,8 +500,11 @@ void model_detune(Model &m, int old_phase) {
 	int stereo_pos = m.get_channel_stereo_pos();
 	if (m.stereo_pos_en() && stereo_pos <= 4) swap_detune_sign = (m.oct_counter & 1) != 0;
 
-	//int x = old_phase;
+#ifdef USE_P_LATCHES_ONLY
 	int x = m.get_channel_reg(REG_PHASE);
+#else
+	int x = old_phase;
+#endif
 
 #ifdef USE_SWAPPED_DETUNE_SIGNS
 	swap_detune_sign = !swap_detune_sign;

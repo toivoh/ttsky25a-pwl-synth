@@ -8,13 +8,15 @@
 `define USE_NEW_REGMAP_B // only takes effect if USE_NEW_REGMAP is enabled
 `endif
 
+`define PURE_RTL
+
 `define USE_PHASE_LATCHES
-`define USE_P_LATCHES_ONLY
+//`define USE_P_LATCHES_ONLY
 `define USE_LSB_DELAY_REGS
 `define USE_OCT_COUNTER_LATCHES
 `define USE_OCT_COUNTER_READ // requires USE_OCT_COUNTER_LATCHES and USE_NEW_READ to work
 `define USE_NEW_READ
-//`define USE_OUTPUT_BUFFERS
+`define USE_OUTPUT_BUFFERS
 
 `define USE_SLOPE_EXP_REGS
 `define USE_PARAMS_REGS
@@ -31,7 +33,7 @@
 `define USE_STEREO_POS
 `define USE_OSC_SYNC // currently only implemented to work with USE_P_LATCHES_ONLY, need write back condition (override oct_enable) for next step otherwise
 `define USE_4_BIT_MODE // only works together with USE_OSC_SYNC
-`define USE_OSC_SYNC_ONLY_FOR_SOME_CHANNELS
+//`define USE_OSC_SYNC_ONLY_FOR_SOME_CHANNELS
 `define USE_SWAPPED_DETUNE_SIGNS
 `define USE_COMMON_SAT_STEREO
 `define USE_DETUNE_FIFTH
@@ -207,8 +209,8 @@
 
 
 
-//`define ALWAYS_FF_POSEDGE_CLK always_ff @(posedge clk)
-`define ALWAYS_FF_POSEDGE_CLK always_ff @(posedge clk, negedge rst_n)
+`define ALWAYS_FF_POSEDGE_CLK always_ff @(posedge clk)
+//`define ALWAYS_FF_POSEDGE_CLK always_ff @(posedge clk, negedge rst_n)
 
 
 //`define PIPELINE
