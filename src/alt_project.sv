@@ -9,7 +9,7 @@
 
 /*
 // For pwls_channel_ALU_unit
-module tt_um_tqv_peripheral_harness_ch #(parameter BITS=12, OCT_BITS=3) (
+module tt_um_toivoh_pwl_synth_ch #(parameter BITS=12, OCT_BITS=3) (
 		input  wire [7:0] ui_in,    // Dedicated inputs
 		output wire [7:0] uo_out,   // Dedicated outputs
 		input  wire [7:0] uio_in,   // IOs: Input path
@@ -45,12 +45,12 @@ module tt_um_tqv_peripheral_harness_ch #(parameter BITS=12, OCT_BITS=3) (
 
 	assign {uio_out, uo_out} = acc;
 	assign uio_oe = 0;
-endmodule : tt_um_tqv_peripheral_harness
+endmodule : tt_um_toivoh_pwl_synth
 */
 
 /*
 // For pwls_multichannel_ALU_unit
-module tt_um_tqv_peripheral_harness_mc #(parameter BITS=12, OCT_BITS=3) (
+module tt_um_toivoh_pwl_synth_mc #(parameter BITS=12, OCT_BITS=3) (
 		input  wire [7:0] ui_in,    // Dedicated inputs
 		output wire [7:0] uo_out,   // Dedicated outputs
 		input  wire [7:0] uio_in,   // IOs: Input path
@@ -86,11 +86,11 @@ module tt_um_tqv_peripheral_harness_mc #(parameter BITS=12, OCT_BITS=3) (
 
 	assign {uio_out, uo_out} = out_acc;
 	assign uio_oe = 0;
-endmodule : tt_um_tqv_peripheral_harness
+endmodule : tt_um_toivoh_pwl_synth
 */
 
 // For GL test of tqvp_toivoh_pwl_synth
-module tt_um_tqv_peripheral_harness #(parameter BITS_E=13) (
+module tt_um_toivoh_pwl_synth #(parameter BITS_E=13) (
 		input  wire [7:0] ui_in,    // Dedicated inputs
 		output wire [7:0] uo_out,   // Dedicated outputs
 		input  wire [7:0] uio_in,   // IOs: Input path
@@ -146,4 +146,4 @@ module tt_um_tqv_peripheral_harness #(parameter BITS_E=13) (
 
 	assign uo_out = periph_uo_out;
 	assign {uio_oe, uio_out} = {data_ready, data_out};
-endmodule : tt_um_tqv_peripheral_harness
+endmodule : tt_um_toivoh_pwl_synth

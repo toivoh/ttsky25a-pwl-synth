@@ -6,7 +6,7 @@
 `default_nettype none
 
 /** TinyQV peripheral test using SPI */
-module tt_um_tqv_peripheral_harness (
+module tt_um_toivoh_pwl_synth (
     input  wire [7:0] ui_in,    // Dedicated inputs
     output wire [7:0] uo_out,   // Dedicated outputs
     input  wire [7:0] uio_in,   // IOs: Input path
