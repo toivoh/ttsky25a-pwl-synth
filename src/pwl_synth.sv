@@ -496,14 +496,16 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 `ifdef USE_OSC_SYNC
 
 	reg last_osc_wrapped;
+	reg last_osc_wrapped_delayed;
 	`ALWAYS_FF_POSEDGE_CLK begin
 		if (!rst_n) last_osc_wrapped <= 0;
 		else begin
-			if (last_osc_wrapped_we) last_osc_wrapped <= (carry_out && oct_enable) || reg_we_always;
+			if (last_osc_wrapped_we) last_osc_wrapped <= (carry_out && oct_enable) || (last_osc_wrapped && osc_sync_en);
 `ifdef USE_TEST_INTERFACE
 			if (ireg_waddr == `TST_ADDR_LAST_OSC_WRAPPED) last_osc_wrapped <= ireg_wdata;
 `endif
 		end
+		last_osc_wrapped_delayed <= last_osc_wrapped;
 	end
 `else
 	wire last_osc_wrapped = 0;
@@ -870,8 +872,16 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 				// Write the phase from acc to phase, if we are in the first subchannel so that the new phase is stored in acc
 				reg_we_if_oct_en = (sub_channel == 0);
 				rmw_continued = 1;
+`ifdef USE_OSC_SYNC
+				if (osc_sync_en && last_osc_wrapped_delayed) begin
+					reg_we_always = (sub_channel == 0); // Activate next cycle if not using USE_P_LATCHES_ONLY
+				end
+`endif
+
 `endif
 `endif
+
+
 			end
 			`STATE_TRI: begin
 				src1_sel = `SRC1_SEL_TRI_OFFSET;
