@@ -282,6 +282,7 @@ module pwls_ALU #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BITS=4, OUT_RSHIFT=3
 		input wire inv_src1, inv_src2, src2_mask_msbs, carry_in,
 		input wire [BITS-1:0] src2_mask,
 		input wire sat_en, ext_sat_en, result_sext, result_mask_bottom,
+		input wire [`CHANNEL_MODE_BITS-1:0] channel_mode,
 
 		output wire signed [BITS_E-1:0] result,
 		output wire cmp_result, delayed, equal, src2_pre_sign, carry_out
@@ -374,11 +375,19 @@ module pwls_ALU #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BITS=4, OUT_RSHIFT=3
 	//assign result = sat_sum;
 	wire signed [BITS_E-1:0] result0 = {sum[BITS_E-1:BITS], sat_sum}; // The top bits are not used with saturation for now
 
+`ifdef USE_QUANTIZATION_LEVEL
+	wire [2:0] quantization_level = channel_mode[`CHANNEL_MODE_BIT_QUANT2 -: 3];
+	wire [BITS_E-1:0] quantization_mask = (-1 << (OUT_RSHIFT - 1)) << quantization_level;
+`else
+	wire [BITS_E-1:0] quantization_mask = -1 << (BITS-1-4);
+`endif
+
 	reg signed [BITS_E-1:0] result1; // not a register
 	always_comb begin
 		result1 = result0;
 		if (result_sext) result1[BITS-1] = result1[BITS-2];
-		if (result_mask_bottom) result1[BITS-1-1-4:0] = 0;
+		//if (result_mask_bottom) result1[BITS-1-1-4:0] = 0;
+		if (result_mask_bottom) result1 &= quantization_mask;
 	end
 	assign result = result1;
 
@@ -440,6 +449,8 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 	wire osc_sync_soft = channel_mode[`CHANNEL_MODE_BIT_OSC_SYNC_SOFT];
 	wire four_bit_mode_en = osc_sync_soft && !osc_sync_en;
 
+	wire common_sat_quant_fix_en = cfg[`CFG_BIT_QUANTIZATION_FIX];
+	wire common_sat_common_quant_en = channel_mode[`CHANNEL_MODE_BIT_COMMON_QUANT];
 
 	wire [`WF_BITS-1:0] waveform;
 	wire lfsr_en, pwl_osc_en, orion_en;
@@ -1003,7 +1014,10 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 				out_acc_frac_update_en = 0;
 				if (common_sat_store) begin
 					dest_sel = `DEST_SEL_OUT_ACC;
-					result_mask_bottom = 0;
+
+					if (!common_sat_quant_fix_en) begin
+						result_mask_bottom = 0;
+					end
 				end
 `endif
 			end
@@ -1112,6 +1126,10 @@ module pwls_state_decoder #(parameter SHIFT_COUNT_BITS=4, DETUNE_EXP_BITS=3, SLO
 				src2_mask_msbs = 0;
 				pred_we = 0;
 				dest_sel = `DEST_SEL_ACC;
+
+				if (common_sat_common_quant_en) begin
+					result_mask_bottom = 1;
+				end
 
 `ifdef USE_COMMON_SAT_STEREO
 				src2_lshift_extra = 0;
@@ -1682,7 +1700,7 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 		.clk(clk), .rst_n(rst_n),
 		.src1_in(src1_in), .src2_in(src2_in), .src2_rot(src2_rot), .src2_forward_extra_bit(src2_forward_extra_bit), .src2_lshift(src2_lshift + src2_lshift_extra),
 		.src2_sext(src2_sext), .src2_sext_less(src2_sext_less), .inv_src2_tri_en(inv_src2_tri_en), .inv_src1_tri_en(inv_src1_tri_en), .src2_mask(src2_mask), .result_sext(result_sext), .result_mask_bottom(result_mask_bottom),
-		.src2_mask_msbs(src2_mask_msbs), .inv_src1(inv_src1), .inv_src2(inv_src2), .carry_in(carry_in), .sat_en(sat_en), .ext_sat_en(ext_sat_en),
+		.src2_mask_msbs(src2_mask_msbs), .inv_src1(inv_src1), .inv_src2(inv_src2), .carry_in(carry_in), .sat_en(sat_en), .ext_sat_en(ext_sat_en), .channel_mode(channel_mode),
 		.result(result), .cmp_result(cmp_result), .delayed(delayed_simple), .equal(equal), .src2_pre_sign(src2_pre_sign), .carry_out(carry_out)
 	);
 

@@ -37,6 +37,7 @@
 `define USE_SWAPPED_DETUNE_SIGNS
 `define USE_COMMON_SAT_STEREO
 `define USE_DETUNE_FIFTH
+`define USE_QUANTIZATION_LEVEL
 
 
 `define USE_MORE_REG_RESETS
@@ -58,10 +59,10 @@
 
 `ifdef USE_NEW_REGMAP
 //	`define CHANNEL_MODE_BITS 4
-	`define CHANNEL_MODE_BITS 12
+	`define CHANNEL_MODE_BITS 16
 	`ifdef USE_NEW_REGMAP_B
 		`define REGS_PER_CHANNEL 8
-		`define REG_BITS 13 // Could be 13? If the registers don't grow too much
+		`define REG_BITS 16 // Could be 13? If the registers don't grow too much
 	`else
 		`define USE_NEW_REGMAP_A
 		`define REGS_PER_CHANNEL 6
@@ -85,7 +86,8 @@
 
 `define CFG_BIT_STEREO_EN 0
 `define CFG_BIT_STEREO_POS_EN 1
-`define CFG_BITS 2
+`define CFG_BIT_QUANTIZATION_FIX 2
+`define CFG_BITS 3
 
 
 // 0-2: detune_exp
@@ -99,6 +101,10 @@
 `define CHANNEL_MODE_BIT_OSC_SYNC_EN 9
 `define CHANNEL_MODE_BIT_OSC_SYNC_SOFT 10
 `define CHANNEL_MODE_BIT_DETUNE_FIFTH 11
+`define CHANNEL_MODE_BIT_COMMON_QUANT 12
+`define CHANNEL_MODE_BIT_QUANT0 13
+`define CHANNEL_MODE_BIT_QUANT1 14
+`define CHANNEL_MODE_BIT_QUANT2 15
 
 `define CHANNEL_MODE_FLAGS_OSC_SYNC_MASK ((1<<`CHANNEL_MODE_BIT_OSC_SYNC_EN)|(1<<`CHANNEL_MODE_BIT_OSC_SYNC_SOFT))
 
