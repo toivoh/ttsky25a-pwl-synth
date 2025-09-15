@@ -38,6 +38,7 @@ const int log2_downsampling = 4;
 // 14: like 0 but with PWL oscillators
 // 1: Fading in chord one note at a time: D3 - G3 - C4 - Eb4  // C3 - E4 - G4 - Bb4
 // 2: falling noise frequency (manual period update)
+// 19: like 2 but with linear noise
 // 10: fixed noise frequency
 // 3: falling oscillator frequency (manual period update)
 // 4: period sweep
@@ -50,9 +51,10 @@ const int log2_downsampling = 4;
 // 17: like 11 but with 4 bit mode
 // 12: phase multipliers: (1, 2^n)
 // 13: common_sat
+// 18: common_sat + 4 bit
 // 15: orion pedal
 // 16: oscillator sync
-const int tune = 17;
+const int tune = 1;
 
 //const bool DETUNE_ON = false;
 const bool DETUNE_ON = true;
@@ -92,11 +94,18 @@ const int MODE_FLAG_PWL_OSC = 256;
 const int MODE_FLAGS_ORION = MODE_FLAG_NOISE | MODE_FLAG_PWL_OSC;
 const int MODE_FLAG_OSC_SYNC_EN = 1 << 9;
 const int MODE_FLAG_OSC_SYNC_SOFT = 1 << 10;
-const int MODE_FLAG_4_BIT = MODE_FLAG_OSC_SYNC_SOFT; // use without MODE_FLAG_OSC_SYNC_EN for 4 bit mode
+const int MODE_FLAG_QUANTIZE = MODE_FLAG_OSC_SYNC_SOFT; // use without MODE_FLAG_OSC_SYNC_EN for quantized bit mode
+const int MODE_FLAG_COMMON_QUANT = 1 << 12;
+const int MODE_BIT_QUANT0 = 13;
+const int MODE_BIT_QUANT1 = 14;
+const int MODE_BIT_QUANT2 = 15;
+const int MODE_FLAGS_4_BIT = MODE_FLAG_QUANTIZE | (4 << MODE_BIT_QUANT0);
 
 
 const int CFG_FLAG_STEREO_EN = 1;
 const int CFG_FLAG_STEREO_POS_EN = 2;
+const int CFG_BIT_DETUNE_STEP0 = 3;
+const int CFG_FLAG_LINEAR_NOISE = 1 << 12;
 
 
 #ifdef DOWNSAMPLE
@@ -292,14 +301,20 @@ int main(int argc, char** argv) {
 // Tune setup
 // ==========
 
-	int cfg = 0;
+	//int cfg = 0;
+	int cfg = 256 << CFG_BIT_DETUNE_STEP0; // set detune_counter increment
+	//int cfg = 511 << CFG_BIT_DETUNE_STEP0;
 #ifdef STEREO_ON
 	cfg |= CFG_FLAG_STEREO_EN;
 #endif
 #ifdef STEREO_POS_ON
 	cfg |= CFG_FLAG_STEREO_POS_EN;
 #endif
-	if (cfg != 0) cfg_write(cfg);
+
+	if (tune == 19) cfg |= CFG_FLAG_LINEAR_NOISE;
+
+	//if (cfg != 0) cfg_write(cfg);
+	cfg_write(cfg);
 
 	int tri_offset = (1 << (BITS-2-2)); // full range is 0 to 2^(BITS-2)-1
 	int slope_offset = 1 << (BITS - 4); // full range is 0 to 2^(BITS-3)-1
@@ -311,7 +326,7 @@ int main(int argc, char** argv) {
 			amp_write(channel, 0); // Silence all channels
 			//mode_write(channel, 6);
 
-			if (tune != 11 && tune != 13 && tune != 14 && tune != 15 && tune != 16 && tune != 17) {
+			if (tune != 11 && tune != 13 && tune != 14 && tune != 15 && tune != 16 && tune != 17 && tune != 2 && tune != 10 && tune != 19) {
 				//int tri_offset = (1 << (BITS-1-2)) - (1 << (BITS-2));
 				//int tri_offset = (1 << (BITS-2-2)) - (1 << (BITS-2));
 				int params = (((tri_offset >> (BITS-2-8))&255)<<8) | ((slope_offset >> (BITS-3-4))*17);
@@ -352,7 +367,7 @@ int main(int argc, char** argv) {
 			//reg_write(MODE_ADDR, channel, detune_exp | (slope_exp0 << 4) | (slope_exp1 << 8));
 			modeparams_write(channel, detune_exp, pwm_offset_default, (slope_exp0 << 4) | (slope_default&15), (slope_exp1 << 4) | (slope_default&15), flags);
 		}
-	} else if (tune == 2 || tune == 10) {
+	} else if (tune == 2 || tune == 10 || tune == 19) {
 		main_channel = 3;
 		// Try to preserve the noise
 		top->tri_offset = -(1 << (BITS-2));
@@ -383,11 +398,11 @@ int main(int argc, char** argv) {
 
 		modeparams_write(0, detune_exp, pwm_offset, slope0, slope1);
 */
-	} else if (tune == 11 || tune == 12 || tune == 13 || tune == 17) {
+	} else if (tune == 11 || tune == 12 || tune == 13 || tune == 17 || tune == 18) {
 		amp_write(0, 63);
 		period_write(0, 4, note_mantissas[0]); // C4
 
-		if (tune == 13) {
+		if (tune == 13 || tune == 18) {
 			int phase_factors = 1 | (1 << 1);
 #ifdef STEREO_ON
 			phase_factors = 0;
@@ -396,7 +411,11 @@ int main(int argc, char** argv) {
 			period_write(1, 3, note_mantissas[7]-7); // fifth
 			//period_write(1, 3, note_mantissas[5]-8); // fourth
 #endif
-			mode_write(0, 4, MODE_FLAG_COMMON_SAT, phase_factors);
+
+			int mode_flags = MODE_FLAG_COMMON_SAT;
+			if (tune == 18) mode_flags |= MODE_FLAGS_4_BIT | MODE_FLAG_COMMON_QUANT;
+
+			mode_write(0, 4, mode_flags, phase_factors);
 			reg_write(SLOPE0_ADDR, 0, 128);
 			reg_write(SLOPE0_ADDR, 1, 128);
 			int slope_sweep_rate = 2+LOG2_SAMPLES_PER_NOTE-1+4-8 + 1;
@@ -435,6 +454,9 @@ int main(int argc, char** argv) {
 
 	bool run = true;
 	for (int i = 0; i < num_samples; i++) {
+#ifdef TRACE_ON
+		if (trace_countdown == 0) printf("i = %d\n", i);
+#endif
 
 		if (!run) break;
 
@@ -563,7 +585,7 @@ int main(int argc, char** argv) {
 			int amp = (i >> (LOG2_SAMPLES_PER_NOTE - 6)) & 63;
 			int channel = i >> LOG2_SAMPLES_PER_NOTE;
 			amp_write(channel, amp);
-		} else if (tune == 2) {
+		} else if (tune == 2 || tune == 19) {
 			int period = (i >> (2+LOG2_SAMPLES_PER_NOTE - 13));
 			period_write(main_channel, period);
 		} else if (tune == 3) {
@@ -637,7 +659,7 @@ int main(int argc, char** argv) {
 			int t = (i >> shr0) & 3;
 			bool first = (i & ((1 << shr0) - 1)) == 0;
 			if (first) {
-				int flags = (tune == 17) ? MODE_FLAG_4_BIT : 0;
+				int flags = (tune == 17) ? MODE_FLAGS_4_BIT : 0;
 				if (tune == 11 || tune == 17) mode_write(0, 5, flags, 1 | (t<<1));
 				else if (tune == 12) mode_write(0, 4 + (t>0), 0, 0 | (t<<1));
 			}

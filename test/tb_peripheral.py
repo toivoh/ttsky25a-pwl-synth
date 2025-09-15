@@ -7,7 +7,7 @@ from cocotb.triggers import ClockCycles
 from random import randrange
 
 INTERFACE_REGISTER_SHIFT = 0
-PWM_OUTPUT_DELAY = 0
+PWM_OUTPUT_DELAY = 1
 
 def map_addr(addr, channel):
 	return (channel<<4) | ((addr&7)<<1) | ((addr&8)>>3)

@@ -47,7 +47,8 @@ module pwls_shared_data #(parameter BITS=16) (
 `endif
 endmodule : pwls_shared_data
 
-module pwls_register #(parameter BITS=16) (
+// INITIAL_VALUE is not honoured when using latches! The initial value will always be zero.
+module pwls_register #(parameter BITS=16, INITIAL_VALUE=0) (
 		input wire clk, rst_n,
 		input wire we,
 		input wire [BITS-1:0] wdata, next_wdata,
@@ -87,7 +88,7 @@ module pwls_shared_data #(parameter BITS=16) (
 	assign out = in;
 endmodule : pwls_shared_data
 
-module pwls_register #(parameter BITS=16) (
+module pwls_register #(parameter BITS=16, INITIAL_VALUE=0) (
 		input wire clk, rst_n,
 		input wire we,
 		input wire [BITS-1:0] wdata, next_wdata,
@@ -95,7 +96,7 @@ module pwls_register #(parameter BITS=16) (
 	);
 	reg [BITS-1:0] data;
 	always_ff @(posedge clk) begin
-		if (!rst_n) data <= 0;
+		if (!rst_n) data <= INITIAL_VALUE;
 `ifdef USE_P_LATCHES_ONLY
 		else if (we) data <= next_wdata; // One cycle less delay on the D input
 `else

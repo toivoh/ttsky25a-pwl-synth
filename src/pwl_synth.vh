@@ -12,11 +12,12 @@
 
 `define USE_PHASE_LATCHES
 //`define USE_P_LATCHES_ONLY
-`define USE_LSB_DELAY_REGS
+//`define USE_LSB_DELAY_REGS
 `define USE_OCT_COUNTER_LATCHES
 `define USE_OCT_COUNTER_READ // requires USE_OCT_COUNTER_LATCHES and USE_NEW_READ to work
 `define USE_NEW_READ
 `define USE_OUTPUT_BUFFERS
+`define USE_ALT_INTERFACE
 
 `define USE_SLOPE_EXP_REGS
 `define USE_PARAMS_REGS
@@ -38,6 +39,8 @@
 `define USE_COMMON_SAT_STEREO
 `define USE_DETUNE_FIFTH
 `define USE_QUANTIZATION_LEVEL
+`define USE_DETUNE_COUNTER
+`define USE_LINEAR_NOISE
 
 
 `define USE_MORE_REG_RESETS
@@ -87,7 +90,10 @@
 `define CFG_BIT_STEREO_EN 0
 `define CFG_BIT_STEREO_POS_EN 1
 `define CFG_BIT_QUANTIZATION_FIX 2
-`define CFG_BITS 3
+`define CFG_BIT_DETUNE_STEP0 3
+`define CFG_DETUNE_STEP_BITS 9
+`define CFG_BIT_LINEAR_NOISE 12
+`define CFG_BITS 13
 
 
 // 0-2: detune_exp
@@ -140,9 +146,14 @@
 `define SRC1_SEL_AMP_TARGET   3'd7
 `ifdef USE_ORION_WAVE
 `define SRC1_SEL_ACC          4'd8
+`define SRC1_SEL_LIN_NOISE_PHASE 4'd9
 `endif
 
+`ifdef USE_DETUNE_COUNTER
+`define SRC2_SEL_BITS 4
+`else
 `define SRC2_SEL_BITS 3
+`endif
 `define SRC2_SEL_ACC          3'd0
 `define SRC2_SEL_REV_PHASE    3'd1
 `define SRC2_SEL_PHASE_STEP   3'd2
@@ -151,6 +162,13 @@
 `define SRC2_SEL_ZERO         3'd5
 `ifdef USE_ORION_WAVE
 `define SRC2_SEL_BITSHUFFLE_ACC 3'd6
+`endif
+`ifdef USE_LINEAR_NOISE
+`define SRC2_SEL_LIN_NOISE_RAMP 3'd7
+`endif
+`ifdef USE_DETUNE_COUNTER
+`define SRC2_SEL_OCT_COUNTER_LOW  4'd8
+`define SRC2_SEL_OCT_COUNTER_HIGH 4'd9
 `endif
 
 `define DEST_SEL_BITS 2

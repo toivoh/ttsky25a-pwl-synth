@@ -1,0 +1,101 @@
+[*]
+[*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
+[*] Mon Sep 15 04:05:23 2025
+[*]
+[dumpfile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb.vcd"
+[dumpfile_mtime] "Mon Sep 15 04:04:50 2025"
+[dumpfile_size] 72501863
+[savefile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_new_top.gtkw"
+[timestart] 71860000
+[size] 2050 974
+[pos] -1 -1
+*-21.000000 79500000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb.
+[treeopen] tb.test_harness.
+[treeopen] tb.test_harness.user_peripheral.
+[sst_width] 297
+[signals_width] 182
+[sst_expanded] 1
+[sst_vpaned_height] 286
+@28
+tb.rst_n
+tb.clk
+@200
+-
+@28
+tb.pwm_out[1:0]
+@c00022
+tb.uio_out[7:0]
+@28
+(0)tb.uio_out[7:0]
+(1)tb.uio_out[7:0]
+(2)tb.uio_out[7:0]
+(3)tb.uio_out[7:0]
+(4)tb.uio_out[7:0]
+(5)tb.uio_out[7:0]
+(6)tb.uio_out[7:0]
+(7)tb.uio_out[7:0]
+@1401200
+-group_end
+@200
+-
+@28
+tb.test_harness.waiting_for_read
+@200
+-
+@22
+tb.test_harness.synth_uo_out[7:0]
+tb.test_harness.user_peripheral.mc_alu_unit.pwm_counter[6:0]
+@28
+tb.test_harness.user_peripheral.mc_alu_unit.pwm_out_mono
+tb.test_harness.user_peripheral.mc_alu_unit.sample_out_acc
+@200
+-
+@28
+tb.test_harness.user_peripheral.mc_alu_unit.extra_term
+@22
+tb.test_harness.user_peripheral.mc_alu_unit.term_index_eff[3:0]
+@28
+tb.test_harness.user_peripheral.mc_alu_unit.state_eff[2:0]
+@200
+-
+@22
+tb.test_harness.cmd0[3:0]
+tb.test_harness.cmd1[3:0]
+tb.test_harness.cmd2[3:0]
+tb.test_harness.cmd3[3:0]
+tb.test_harness.cmd[3:0]
+@200
+-
+@28
+tb.test_harness.cmd_read
+tb.test_harness.cmd_write
+tb.test_harness.cmd_data_high
+tb.test_harness.cmd_data_low
+@22
+tb.test_harness.user_data_in[7:0]
+@200
+-
+@22
+tb.test_harness.wdata0[15:0]
+tb.test_harness.wdata[15:0]
+tb.test_harness.address[7:0]
+@200
+-
+@28
+tb.test_harness.write_pending
+@29
+tb.test_harness.do_write
+@28
+tb.test_harness.reg_we_internal
+@200
+-
+@28
+tb.test_harness.waiting_for_read
+tb.test_harness.data_ready
+@200
+-
+@22
+tb.period0[12:0]
+[pattern_trace] 1
+[pattern_trace] 0

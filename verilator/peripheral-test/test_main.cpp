@@ -19,6 +19,7 @@
 //#define DEBUG_OSC
 //#define DEBUG_DETUNE
 //#define DEBUG_TRI
+//#define DEBUG_SLOPE
 //#define DEBUG_AMP_CLAMP
 //#define DEBUG_ADD_COMMON_SAT
 
@@ -51,6 +52,8 @@ const int seq_extra_exp = 0;
 #define USE_SWAPPED_DETUNE_SIGNS
 #define USE_COMMON_SAT_STEREO
 #define USE_DETUNE_FIFTH
+#define USE_QUANTIZATION_LEVEL
+#define USE_DETUNE_COUNTER
 
 
 const int INTERFACE_REGISTER_SHIFT = 0;
@@ -68,6 +71,8 @@ const int OUT_ACC_FRAC_BITS = 4;
 const int OUT_ACC_INITIAL_TOP = 512 >> OUT_ACC_FRAC_BITS;
 const int OUT_ACC_INITIAL_TOP_STEREO = 768 >> OUT_ACC_FRAC_BITS;
 const int OCT_COUNTER_BITS = 24;
+const int LFSR_HIGHEST_OCT = 2;
+const int LFSR_HIGHEST_OCT2 = 3;
 
 const int OUT_RSHIFT = 4;
 const int REV_PHASE_SHR = 0;
@@ -85,9 +90,13 @@ const int REG_PHASE = 8;
 #ifdef USE_OCT_COUNTER_LATCHES
 const int REG_OCT_COUNTER = 9;
 #endif
+#ifdef USE_DETUNE_COUNTER
+const int REG_DETUNE_COUNTER = 10;
+#endif
 const int REGS_PER_CHANNEL = 9; // Keep at 9; Don't count oct_counter; it is still counted as a core register
 
-const int num_reg_rand_bits[REGS_PER_CHANNEL] = {OCT_BITS + MANTISSA_BITS, 6, 8, 8, 8, 12, 16, 16, BITS};
+const int num_reg_rand_bits[REGS_PER_CHANNEL] = {OCT_BITS + MANTISSA_BITS, 6, 8, 8, 8, 16, 16, 16, BITS};
+// Only used for swept parameters:
 const int reg_bits[] = {OCT_BITS + MANTISSA_BITS, 6, 8, 8, 8};
 const int sweep_bits[] = {5, 7, 7, 7, 5};
 const int pre_sweep[] = {0, 3, 5, 7, 1}; // Used to set oct_counter values that will activate the sweep for the corresponding parameter
@@ -106,6 +115,10 @@ const int MODE_FLAG_OSC_SYNC_EN = 1 << 9;
 const int MODE_FLAG_OSC_SYNC_SOFT = 1 << 10;
 const int MODE_BIT_DETUNE_FIFTH = 11;
 const int MODE_FLAG_DETUNE_FIFTH = 1 << MODE_BIT_DETUNE_FIFTH;
+const int MODE_FLAG_COMMON_QUANT = 1 << 12;
+const int MODE_BIT_QUANT0 = 13;
+const int MODE_BIT_QUANT1 = 14;
+const int MODE_BIT_QUANT2 = 15;
 
 
 const int MODE_FLAGS_OSC_SYNC_MASK = MODE_FLAG_OSC_SYNC_EN | MODE_FLAG_OSC_SYNC_SOFT;
@@ -113,6 +126,10 @@ const int MODE_FLAGS_OSC_SYNC_MASK = MODE_FLAG_OSC_SYNC_EN | MODE_FLAG_OSC_SYNC_
 
 const int CFG_FLAG_STEREO_EN = 1;
 const int CFG_FLAG_STEREO_POS_EN = 2;
+const int CFG_FLAG_QUANTIZATION_FIX = 4;
+const int CFG_BIT_DETUNE_STEP0 = 3;
+const int CFG_DETUNE_STEP_BITS = 9;
+const int CFG_FLAG_LINEAR_NOISE = 1 << 12;
 
 
 const int STATE_CMP_REV_PHASE = 0;
@@ -138,9 +155,10 @@ const int TST_ADDR_LFSR_EXTRA_BITS = 4;
 const int TST_ADDR_OCT_COUNTER = 5;
 const int TST_ADDR_OUT_ACC_ALT_FRAC = 6;
 const int TST_ADDR_LAST_OSC_WRAPPED = 7;
-const int TST_ADDR_NUM = 8;
+const int TST_ADDR_DETUNE_COUNTER = 8;
+const int TST_ADDR_NUM = 9;
 
-const int core_reg_bits[TST_ADDR_NUM] = {BITS+1, BITS, 1, 1, 18-(BITS-1), 24, OUT_ACC_FRAC_BITS, 1};
+const int core_reg_bits[TST_ADDR_NUM] = {BITS+1, BITS, 1, 1, 18-(BITS-1), 24, OUT_ACC_FRAC_BITS, 1, 32};
 
 
 // TODO
@@ -180,10 +198,19 @@ void write_reg_to_rtl(int channel, int reg, int data);
 
 // assumes en_external = 0
 void write_core_reg_to_rtl(int addr, int data) {
+	//printf("write_core_reg_to_rtl(%d, 0x%x)\n", addr, data); ///!!!
 #ifdef USE_OCT_COUNTER_LATCHES
 	if (addr == TST_ADDR_OCT_COUNTER) {
 		write_reg_to_rtl(0, REG_OCT_COUNTER, data & 0xfff);
 		write_reg_to_rtl(1, REG_OCT_COUNTER, (data >> 12) & 0xfff);
+		return;
+	}
+#endif
+#ifdef USE_DETUNE_COUNTER
+	if (addr == TST_ADDR_DETUNE_COUNTER) {
+		//printf("data = 0x%x, data & 0xfff = 0x%x, (data >> 16) & 0xfff = 0x%x\n", data, data & 0xfff, (data >> 16) & 0xfff); //
+		write_reg_to_rtl(0, REG_DETUNE_COUNTER, data & 0xffff);
+		write_reg_to_rtl(1, REG_DETUNE_COUNTER, (data >> 16) & 0xffff);
 		return;
 	}
 #endif
@@ -223,6 +250,8 @@ int get_reg_address_p(int channel, int reg) {
 }
 
 void write_reg_to_rtl(int channel, int reg, int data) {
+	//printf("write_reg_to_rtl(%d, %d, 0x%x)\n", channel, reg, data); ///!!!
+
 	top->address = get_reg_address(channel, reg);
 	top->data_in = data << INTERFACE_REGISTER_SHIFT;
 	top->data_write_n = 1; // 16 bit write
@@ -260,15 +289,17 @@ int read_reg_from_rtl(int channel, int reg) {
 
 struct Model {
 	int term_index;
-	int acc, out_acc, out_acc_alt_frac, pred, part, lfsr_extra_bits, oct_counter, cfg;
+	int acc, out_acc, out_acc_alt_frac, pred, part, lfsr_extra_bits, oct_counter, cfg, detune_counter;
 	bool last_osc_wrapped;
 	int regs[NUM_CHANNELS*REGS_PER_CHANNEL];
+	int saved_phase_data[NUM_CHANNELS];
 
 	Model() {
 		term_index = 0;
-		acc = out_acc = out_acc_alt_frac = pred = part = lfsr_extra_bits = oct_counter = cfg = 0;
+		acc = out_acc = out_acc_alt_frac = pred = part = lfsr_extra_bits = oct_counter = cfg = detune_counter = 0;
 		last_osc_wrapped = false;
 		memset(regs, 0, sizeof(regs));
+		memset(saved_phase_data, 0, sizeof(saved_phase_data));
 	}
 
 	int get_reg(int channel, int reg) { return regs[channel + reg*NUM_CHANNELS]; }
@@ -282,6 +313,8 @@ struct Model {
 	int get_channel_reg(int reg) { return get_reg(get_channel(), reg); }
 	void set_channel_reg(int reg, int data) { set_reg(get_channel(), reg, data); }
 	int get_subchannel() { return term_index&1; }
+	bool mode_flag_set(int mask) { return (get_channel_reg(REG_MODE) & mask) != 0; }
+
 	bool stereo_en() { return (cfg & CFG_FLAG_STEREO_EN) != 0; }
 	bool stereo_pos_en() { return (cfg & CFG_FLAG_STEREO_POS_EN) != 0; }
 	int get_channel_stereo_pos() { return (get_channel_reg(REG_MODE) >> MODE_BIT_3X) & 7; }
@@ -306,6 +339,14 @@ struct Model {
 	bool common_sat_store() { return _common_sat() && get_channel() == 0 && get_subchannel() == 0; }
 	bool common_sat_add() { return _common_sat() && get_channel() == 0 && get_subchannel() == 1; }
 #endif
+	bool quant_mode_en() { return (get_channel_reg(REG_MODE) & (MODE_FLAG_OSC_SYNC_EN | MODE_FLAG_OSC_SYNC_SOFT)) == MODE_FLAG_OSC_SYNC_SOFT; }
+#ifdef USE_QUANTIZATION_LEVEL
+	int quant_level() { return (get_channel_reg(REG_MODE)>>MODE_BIT_QUANT0)&7; }
+	int quant_mask() { return (-1 << (OUT_RSHIFT - 1)) << quant_level(); }
+#else
+	int quant_mask() { return -1 << (BITS-1-4); }
+#endif
+	bool linear_noise_en() { return (cfg & CFG_FLAG_LINEAR_NOISE) != 0; }
 };
 
 #ifdef USE_ORION_WAVE
@@ -382,7 +423,10 @@ void model_oscillator(Model &m) {
 	//bool lfsr_18 = (m.get_channel() == NUM_CHANNELS - 1);
 	bool lfsr_18 = (m.get_channel() == 0 || m.get_channel() == 3);
 
-	int shift_count = 3 - period_exp - (lfsr_en ? 6 : 0); // TODO: is 6 the right offset?
+	int shift_count = 3 - period_exp - (lfsr_en ? ((m.linear_noise_en() ? LFSR_HIGHEST_OCT2 : LFSR_HIGHEST_OCT) + 4) : 0);
+#ifdef DEBUG_OSC
+	printf("shift_count = %d ", shift_count);
+#endif
 	bool skip = false;
 	if (shift_count < 0) {
 		//int oct_enables = (m.oct_counter + 1) & ~m.oct_counter;
@@ -390,6 +434,9 @@ void model_oscillator(Model &m) {
 		if (((oct_enables >> (-shift_count - 1)) & 1) == 0) skip = true;
 		shift_count = 0;
 	}
+#ifdef DEBUG_OSC
+	printf("skip = %d ", skip);
+#endif
 
 	bool delayed = (((phase >> shift_count) & 1) != 0);
 	bool small_step;
@@ -433,6 +480,9 @@ void model_oscillator(Model &m) {
 #ifdef DEBUG_OSC
 	printf("delayed = %d, small_step = 0x%x, lfsr_en = %d\n", delayed, small_step, lfsr_en);
 #endif
+
+	//m.last_small_step = small_step;
+	m.saved_phase_data[m.get_channel()] = (m.get_channel_reg(REG_PHASE) & 7) | (small_step << 3);
 
 	if (lfsr_en) {
 		if (!delayed && small_step) phase += 1;
@@ -479,10 +529,41 @@ void model_oscillator(Model &m) {
 
 // Depends on channel, subchannel, detune_exp for channel, phase for channel
 void model_detune(Model &m, int old_phase) {
+	int mode = m.get_channel_reg(REG_MODE);
+	bool lfsr_en = get_lfsr_en(mode);
+
+	if (lfsr_en && m.linear_noise_en()) {
+		int phase = m.saved_phase_data[m.get_channel()];
+		bool delayed = phase & 1;
+		bool last_small_step = (phase & 8) != 0;
+		bool slow = delayed || last_small_step;
+		bool new_bit = (phase & 2) != 0;
+		bool old_bit = (phase & 4) != 0;
+
+		int x = old_bit << (BITS-1);
+#ifdef DEBUG_DETUNE
+		printf("linear_noise: oct_counter = 0x%x, phase = 0x%x, delayed = %d, last_small_step = %d, slow = %d, old_bit = %d, new_bit = %d, x0 = 0x%x\n", m.oct_counter, phase, delayed, last_small_step, slow, old_bit, new_bit, x);
+#endif
+		if (old_bit != new_bit) {
+			if (slow) x += delayed << (BITS-2);
+#ifdef DEBUG_DETUNE
+			printf("linear_noise: slow: x = 0x%x\n", x);
+#endif
+			int octave = (~m.get_channel_reg(REG_PERIOD) >> MANTISSA_BITS) & ((1 << OCT_BITS)-1);
+			int mask = slow ? (1 << (BITS-2)) - 1 : (1 << (BITS-1)) - 1;
+			x += ((m.oct_counter>>1) << (octave + !slow)) & mask;
+#ifdef DEBUG_DETUNE
+			printf("linear_noise: x = 0x%x\n", x);
+#endif
+		}
+
+		m.acc = signed_wrap(x);
+		return;
+	}
+
 	int detune_exp = m.get_channel_reg(REG_MODE) & 7;
 	int subchannel = m.get_subchannel();
 
-	int mode = m.get_channel_reg(REG_MODE);
 	bool enable_3x = (subchannel == 0) && m.phase_factor_en() && ((mode & MODE_FLAG_3X) != 0);
 
 #ifdef DEBUG_DETUNE
@@ -521,7 +602,14 @@ void model_detune(Model &m, int old_phase) {
 		if (detune_exp != 0 && !detune_disable) {
 			//int detune_src = m.oct_counter >> 6;
 			//detune = detune_src >> (7 - detune_exp);
+#ifdef USE_DETUNE_COUNTER
+			detune = m.detune_counter >> ((8+6+7) - detune_exp);
+#ifdef DEBUG_DETUNE
+			printf("detune_counter = 0x%x\n", m.detune_counter);
+#endif
+#else
 			detune = m.oct_counter >> ((6+7) - detune_exp);
+#endif
 
 			if ((subchannel == 0) != swap_detune_sign) x += detune;
 			else x -= detune;
@@ -678,13 +766,17 @@ void model_slope(Model &m) {
 		m.pred = cmp;
 	}
 
+#ifdef USE_4_BIT_MODE
+	if (m.quant_mode_en() && (!m.common_sat_store() || ((m.cfg & CFG_FLAG_QUANTIZATION_FIX) != 0))) y &= m.quant_mask();
+#ifdef DEBUG_SLOPE
+		printf("quant_mode_en = %d, common_quant = %d, common_sat_add = %d, y = 0x%x\n", m.quant_mode_en(), m.mode_flag_set(MODE_FLAG_COMMON_QUANT), m.common_sat_add(), y);
+#endif
+#endif
+
 	if (m.common_sat_store()) { // store result to out_acc instead
 		m.out_acc &= ((1 << OUT_ACC_FRAC_BITS) - 1);
 		m.out_acc |= y & (-1 << OUT_ACC_FRAC_BITS);
 	} else {
-#ifdef USE_4_BIT_MODE
-		if ((m.get_channel_reg(REG_MODE) & (MODE_FLAG_OSC_SYNC_EN | MODE_FLAG_OSC_SYNC_SOFT)) == MODE_FLAG_OSC_SYNC_SOFT) y &= -1 << (BITS-1-4);
-#endif
 		m.acc = y;
 	}
 
@@ -700,6 +792,13 @@ void model_add_common_sat(Model &m) {
 	m.acc = sat(m.acc + out_acc);
 #ifdef DEBUG_ADD_COMMON_SAT
 	printf("add_common_sat:\tacc = 0x%x\n", m.acc);
+#endif
+#ifdef USE_4_BIT_MODE
+	int mask = m.quant_mask();
+	if (m.mode_flag_set(MODE_FLAG_COMMON_QUANT)) m.acc &= mask;
+#ifdef DEBUG_ADD_COMMON_SAT
+	printf("add_common_sat:\tmode = 0x%x, quant_level = %d, mask = 0x%x, quantized acc = 0x%x\n", m.get_channel_reg(REG_MODE), m.quant_level(), mask, m.acc);
+#endif
 #endif
 }
 
@@ -834,6 +933,7 @@ void write_core_regs_to_rtl(Model &m) {
 	write_core_reg_to_rtl(TST_ADDR_LFSR_EXTRA_BITS, m.lfsr_extra_bits);
 	write_core_reg_to_rtl(TST_ADDR_OCT_COUNTER, m.oct_counter);
 	write_core_reg_to_rtl(TST_ADDR_LAST_OSC_WRAPPED, m.last_osc_wrapped);
+	write_core_reg_to_rtl(TST_ADDR_DETUNE_COUNTER, m.detune_counter);
 	write_cfg_to_rtl(m.cfg);
 }
 
@@ -985,8 +1085,15 @@ bool run_step_tests() {
 				int phase = (detune*0x2345) & ((1 << BITS) - 1);
 				int oct_counter = (detune << (6 + 7 - detune_exp_eff)) & ((1<<24)-1);
 				m.set_reg_both(0, REG_PHASE, phase);
+
+#ifdef USE_DETUNE_COUNTER
+				m.detune_counter = oct_counter << 8;
+				m.oct_counter = rand();
+				write_core_reg_to_rtl(TST_ADDR_DETUNE_COUNTER, m.detune_counter);
+#else
 				m.oct_counter = oct_counter;
-				write_core_reg_to_rtl(TST_ADDR_OCT_COUNTER, oct_counter);
+#endif
+				write_core_reg_to_rtl(TST_ADDR_OCT_COUNTER, m.oct_counter);
 
 				exec_step(m.term_index, STATE_DETUNE, 3); // detune overwrites the phase with the value in acc if we run the post part
 				model_detune(m);
@@ -1453,7 +1560,11 @@ void randomize(Model &m, int horizon) {
 	m.part = rand_bits(1);
 	m.lfsr_extra_bits = rand_bits(7);
 	m.last_osc_wrapped = rand_bits(1);
-	m.cfg = rand_bits(2); // random stereo
+	//m.cfg = rand_bits(3); // random stereo, CFG_FLAG_QUANTIZATION_FIX
+	m.cfg = rand_bits(13); // random stereo, CFG_FLAG_QUANTIZATION_FIX, CFG_FLAG_LINEAR_NOISE
+	m.cfg &= ~(((1 << CFG_DETUNE_STEP_BITS)-1) << CFG_BIT_DETUNE_STEP0);
+	m.cfg |= 256 << CFG_BIT_DETUNE_STEP0;
+	m.detune_counter = rand_bits(32);
 
 	//m.oct_counter = rand_bits(24);
 	// Weighted distribution to sample oct_counter_values with many lowest bits = 1, to trigger octave enables.
@@ -1629,6 +1740,7 @@ bool run_sequence_test(int num_samples, int horizon) {
 		for (int i = 0; i < 4; i++) timestep();
 		m.acc = top->acc_out; // Read back current acc update to account for bits in acc that we ignored
 		m.oct_counter++;
+		m.detune_counter += 256;
 
 		if (all_ok) num_samples_ok = sample_index+1;
 

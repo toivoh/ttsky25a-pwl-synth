@@ -45,6 +45,8 @@ module tb ();
 		.rst_n  (rst_n)     // not reset
 	);
 
+	wire [1:0] pwm_out = uio_out[7:6];
+
 `ifndef GL_TEST
 	wire [12:0] period0 = test_harness.user_peripheral.mc_alu_unit.periods[0];
 	wire [12:0] period1 = test_harness.user_peripheral.mc_alu_unit.periods[1];
