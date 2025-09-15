@@ -32,7 +32,7 @@ async def read_pwm_duty(dut, aligned = False, max_period=64):
 def remap_addr(addr):
 	channel = addr & 3
 	field = addr >> 2
-	return ((channel << 3) | field) << 1
+	return (((channel << 3) | (field&7)) << 1) | ((field&8)>>3)
 
 READ_SEL_HIGH = 16
 CMD_READ = 8
@@ -42,7 +42,7 @@ CMD_DATA_LOW = 1
 
 READ_WAITING = 32
 
-reg_bits = [13, 6, 8, 8, 8, 13, 13, 13, 12]
+reg_bits = [13, 6, 8, 8, 8, 16, 13, 13, 12, 13, 16]
 
 async def reg_write(dut, addr, value):
 	bits = reg_bits[addr>>2]
@@ -99,7 +99,7 @@ async def test_project(dut):
 
 	dut._log.info("Test project behavior: PWL Synth")
 
-	nbits = [13, 6, 8, 8, 8, 13]
+	nbits = [13, 6, 8, 8, 8, 16]
 
 	dut._log.info("Check initial PWM output")
 	await ClockCycles(dut.clk, 100)
@@ -202,3 +202,18 @@ async def test_project(dut):
 	for i in range(10):
 		n_high, n_total = await read_pwm_duty(dut, i > 0)
 		assert (n_high, n_total) == (n_high_0, n_total_0)
+
+	dut._log.info("Write and read back detune_counter")
+	detune_counter = 0x98765432
+	for i in range(2):
+		if i == 1:
+			dut._log.info("Turn off detune_counter incrementation")
+			await reg_write(dut, 4*9+2, 0) # cfg
+
+		await reg_write(dut, 4*10, detune_counter & 0xffff)
+		await reg_write(dut, 4*10+1, (detune_counter>>16) & 0xffff)
+		dut._log.info("Wrote detune_counter = " + hex(detune_counter))
+		dc_read = (await reg_read(dut, 4*10)) | ((await reg_read(dut, 4*10+1))<<16)
+		dut._log.info("Read detune_counter = " + hex(dc_read))
+
+		if i == 1: assert dc_read == detune_counter

@@ -1,22 +1,23 @@
 [*]
 [*] GTKWave Analyzer v3.4.0 (w)1999-2022 BSI
-[*] Mon Sep 15 04:05:23 2025
+[*] Mon Sep 15 06:57:18 2025
 [*]
 [dumpfile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb.vcd"
-[dumpfile_mtime] "Mon Sep 15 04:04:50 2025"
-[dumpfile_size] 72501863
+[dumpfile_mtime] "Mon Sep 15 06:54:55 2025"
+[dumpfile_size] 14123037
 [savefile] "/home/toivo/code/tinytapeout/ttsky25a-chiptune-periph/test/tb_new_top.gtkw"
-[timestart] 71860000
-[size] 2050 974
+[timestart] 854594000
+[size] 2716 1459
 [pos] -1 -1
-*-21.000000 79500000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+*-19.900000 858546000 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.test_harness.
 [treeopen] tb.test_harness.user_peripheral.
+[treeopen] tb.test_harness.user_peripheral.mc_alu_unit.
 [sst_width] 297
-[signals_width] 182
+[signals_width] 268
 [sst_expanded] 1
-[sst_vpaned_height] 286
+[sst_vpaned_height] 455
 @28
 tb.rst_n
 tb.clk
@@ -84,9 +85,7 @@ tb.test_harness.address[7:0]
 -
 @28
 tb.test_harness.write_pending
-@29
 tb.test_harness.do_write
-@28
 tb.test_harness.reg_we_internal
 @200
 -
@@ -97,5 +96,39 @@ tb.test_harness.data_ready
 -
 @22
 tb.period0[12:0]
+@200
+-
+@22
+tb.test_harness.user_peripheral.mc_alu_unit.detune_counter[31:0]
+@200
+-
+@28
+tb.test_harness.user_peripheral.mc_alu_unit.alu_unit.read_msbs_reg[2:0]
+@22
+tb.test_harness.user_peripheral.mc_alu_unit.alu_unit.direct_rdata[15:0]
+tb.test_harness.user_peripheral.mc_alu_unit.alu_unit.reg_read_index[3:0]
+tb.test_harness.user_peripheral.mc_alu_unit.reg_read_index[3:0]
+tb.test_harness.user_peripheral.mc_alu_unit.reg_read_index0[3:0]
+@200
+-
+@28
+tb.test_harness.user_peripheral.mc_alu_unit.reg_we
+@22
+tb.test_harness.user_peripheral.mc_alu_unit.reg_wdata[15:0]
+tb.test_harness.user_peripheral.mc_alu_unit.reg_waddr_eff[5:0]
+tb.test_harness.user_peripheral.address[5:0]
+tb.test_harness.user_peripheral.address2[5:0]
+@28
+tb.test_harness.user_peripheral.mc_alu_unit.reg_read_channel[1:0]
+@22
+tb.test_harness.user_peripheral.mc_alu_unit.alu_unit.reg_read_index[3:0]
+@200
+-
+@22
+tb.test_harness.user_peripheral.mc_alu_unit.cfg[12:0]
+tb.test_harness.user_peripheral.mc_alu_unit.alu_unit.acc_out[15:0]
+tb.test_harness.user_peripheral.data_out[31:0]
+@23
+tb.test_harness.user_peripheral.reg_rdata[15:0]
 [pattern_trace] 1
 [pattern_trace] 0

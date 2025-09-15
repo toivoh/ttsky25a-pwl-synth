@@ -216,7 +216,7 @@
 `define SWEEP_INDEX_PWM_OFFSET 4
 // Not used for sweeping, but for read-back
 `define SWEEP_INDEX_PHASE 5
-`define READ_INDEX_BITS 3
+`define READ_INDEX_BITS 4
 
 
 // For test interface

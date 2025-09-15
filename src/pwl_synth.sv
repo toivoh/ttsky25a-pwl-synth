@@ -1304,7 +1304,9 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 `endif
 
 		output wire pred_out,
-		output wire [BITS_E-1:0] acc_out, result_out,
+		//output wire [BITS_E-1:0] acc_out,
+		output wire [15:0] acc_out,
+		output wire [BITS_E-1:0] result_out,
 		output wire [BITS-1:0] out_acc_out
 	);
 
@@ -1345,6 +1347,7 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 `endif
 
 	reg [ACC_BITS-1:0] acc;
+	reg [16-ACC_BITS-1:0] read_msbs_reg;
 	reg signed [BITS-1:0] out_acc;
 `ifdef USE_STEREO
 	reg [OUT_ACC_FRAC_BITS-1:0] out_acc_alt_frac;
@@ -1855,11 +1858,13 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 `endif
 	end
 
+	wire [15:0] direct_rdata = curr_channel[0] ? detune_counter[31:16] : detune_counter[15:0];
 
 `ifdef USE_MORE_REG_RESETS
 	`ALWAYS_FF_POSEDGE_CLK begin
 		if (!rst_n) begin
 			acc <= 0;
+			read_msbs_reg <= 0;
 			pred <= 0;
 			part <= 0;
 		end else // continues below
@@ -1877,6 +1882,10 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 			if (part_we) part <= part_next;
 		end
 
+		// Read detune_counter?
+		// TODO: use DETUNE_C_INDEX instead of hardcoded 10
+		if (extra_term && state == 7 && reg_read_index == 10) {read_msbs_reg, acc} <= direct_rdata;
+
 `ifdef USE_TEST_INTERFACE
 		if (ireg_waddr == `TST_ADDR_ACC) acc <= ireg_wdata;
 		if (ireg_waddr == `TST_ADDR_PRED) pred <= ireg_wdata;
@@ -1887,7 +1896,8 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 	assign src1_sel_out = src1_sel;
 	assign dest_sel_out = dest_sel;
 
-	assign acc_out = acc;
+	//assign acc_out = acc;
+	assign acc_out = {read_msbs_reg, acc};
 	assign result_out = result;
 
 	assign out_acc_out = out_acc;
@@ -2000,7 +2010,8 @@ module pwls_multichannel_ALU_unit #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BI
 
 		output wire new_out_acc,
 		output wire [BITS-1:0] phase_out, out_acc_out,
-		output wire [BITS_E-1:0] acc_out,
+		//output wire [BITS_E-1:0] acc_out,
+		output wire [15:0] acc_out,
 		output wire pwm_out, pwm_out_right,
 		output int pwm_out_offset
 	);
@@ -2106,7 +2117,7 @@ module pwls_multichannel_ALU_unit #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BI
 	wire [LOG2_CHANNELS-1:0] reg_read_channel = reg_raddr[LOG2_CHANNELS-1:0];
 	// Map index 8 to `SWEEP_INDEX_PHASE.
 	// TODO: Generalize if adding more readable registers
-	wire [`READ_INDEX_BITS-1:0] reg_read_index = reg_read_index0[3] ? `SWEEP_INDEX_PHASE : reg_read_index0;
+	wire [`READ_INDEX_BITS-1:0] reg_read_index = reg_read_index0 == 8 ? `SWEEP_INDEX_PHASE : reg_read_index0;
 `endif
 
 
