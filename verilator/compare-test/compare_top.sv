@@ -32,7 +32,7 @@ module compare_top(
 
 	wire [7:0] uio_out;
 	wire [7:0] uio_oe;
-	tt_um_toivoh_pwl_synth wrapper(
+	tt_um_tqv_peripheral_harness wrapper(
 		.clk(clk), .rst_n(rst_n),
 		.ui_in(ui_in), .uio_in(uio_in),
 		.uo_out(uo_out), .uio_out(uio_out), .uio_oe(uio_oe)
