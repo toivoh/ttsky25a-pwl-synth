@@ -24,6 +24,8 @@ OSC_SYNC_SOFT = 3
 
 CFG_STEREO_EN = 1
 CFG_STEREO_POS_EN = 2
+CFG_QUANT_FIX_EN = 4
+CFG_LIN_NOISE_EN = 4096
 
 # Chromatic scale starting on B
 note_mantissas = [1001, 887, 780, 679, 583, 493, 408, 327, 252, 180, 112, 49]
@@ -40,14 +42,65 @@ curr_sweep_pa = [0]*4
 curr_sweep_ws = [0]*4
 curr_cfg = 0
 
+# Register access for peripheral version:
+
 def raw_reg_write(address, data):
 	machine.mem16[BASE_ADDRESS + (address&63)] = data
 
-def reg_write(channel, reg, data):
-	address = channel*16 + reg
-	machine.mem16[BASE_ADDRESS + (address&63)] = data
+def raw_reg_read(address):
+	return machine.mem16[BASE_ADDRESS + (address&63)]
 
-def set_cfg(cfg):
+# Register access for deluxe version:
+
+#READ_SEL_HIGH = 16
+#CMD_READ = 8
+#CMD_WRITE = 4
+#CMD_DATA_HIGH = 2
+#CMD_DATA_LOW = 1
+#
+#READ_WAITING = 32
+#
+#def raw_reg_write(addr, value):
+#	tt.input_byte = value & 0xff
+#	tt.bidir_byte = CMD_DATA_LOW
+#	# should wait for 3 cycles here, assume we don't have to
+#
+#	tt.input_byte = (value >> 8) & 0xff
+#	tt.bidir_byte = CMD_DATA_HIGH
+#	# should wait for 3 cycles here, assume we don't have to
+#
+#	tt.input_byte = addr
+#	tt.bidir_byte = CMD_WRITE
+#	# should wait for 3 cycles here, assume we don't have to
+#	# should wait for 4 cycles here for the write to take effect, assume we don't have to
+#
+#def raw_reg_read(addr):
+#	tt.input_byte = addr
+#	tt.bidir_byte = CMD_READ
+#	# should wait for 4 cycles here, assume we don't have to
+#
+#	wait_counter = 0
+#	while (tt.bidir_byte & READ_WAITING) != 0:
+#		wait_counter += 1
+#		assert wait_counter < 70
+#
+#	data = tt.output_byte
+#	tt.bidir_byte = READ_SEL_HIGH
+#	# should wait for 1 cycle here, assume we don't have to
+#	data |= tt.bidir_byte << 8
+#
+#	return data
+
+
+def reg_write(channel, reg, data):
+	raw_reg_write(channel*16 + reg, data)
+
+def reg_read(channel, reg):
+	return raw_reg_read(channel*16 + reg)
+
+def set_cfg(cfg, dcounter_step=256):
+	cfg &= ~(0x1ff << 3)
+	cfg |= (dcounter_step & 0x1ff) << 3
 	curr_cfg = cfg
 	raw_reg_write(0x23, cfg)
 
@@ -101,10 +154,10 @@ def play_note(channel, note, amp=63, relative_detune=0):
 		detune_f =(note + relative_detune) // 6
 		detune_f = max(0, min(15, detune_f))
 
-	# Update detune_exp and possibly detune_fifth
+	# Update detune_exp and possibly detune_frac
 	mode = curr_modes[channel]
 	mode = (mode & ~7) | (detune_f >> 1)
-	if (curr_cfg & CFG_STEREO_POS_EN) != 0 or (mode & 7 << 4) == 0: # set detune_fifth when not using freq_mults (including when stereo position mode is on)
+	if (curr_cfg & CFG_STEREO_POS_EN) != 0 or (mode & 7 << 4) == 0: # set detune_frac when not using freq_mults (including when stereo position mode is on)
 		mode = (mode & ~2048) | ((detune_f&1) << 11)
 	curr_modes[channel] = mode
 
@@ -115,8 +168,9 @@ def play_note(channel, note, amp=63, relative_detune=0):
 	reg_write(channel, REG_SWEEP_PA, curr_sweep_pa[channel])
 	reg_write(channel, REG_SWEEP_WS, curr_sweep_ws[channel])
 
-def set_waveform(channel, slope_r=0, slope_f=0, pwm_offset=0, detune_exp=0, waveform=0, freq_mults=0, common_sat=False, osc_sync=0, detune_fifth=False):
-	mode = (detune_exp&7) | ((waveform&1)<<3) | ((freq_mults&7)<<4) | ((common_sat&1)<<7) | ((waveform&2)<<7) | ((osc_sync&3)<<9) | ((detune_fifth&1)<<11)
+def set_waveform(channel, slope_r=0, slope_f=0, pwm_offset=0, detune_exp=0, waveform=0, freq_mults=0, common_sat=False, osc_sync=0, detune_frac=False, common_quant=False, quantization_level=4):
+	mode = (detune_exp&7) | ((waveform&1)<<3) | ((freq_mults&7)<<4) | ((common_sat&1)<<7) | ((waveform&2)<<7) | ((osc_sync&3)<<9) | ((detune_frac&1)<<11)
+	mode |= (common_quant << 12) << ((quantization_level&7)<<13)
 
 	curr_slopes_r[channel] = slope_r
 	curr_slopes_f[channel] = slope_f
