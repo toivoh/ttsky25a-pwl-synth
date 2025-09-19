@@ -60,7 +60,6 @@ CMD_DATA_LOW = 1
 READ_WAITING = 32
 
 def raw_reg_write(addr, value):
-
 	tt.input_byte = value & 0xff
 	tt.bidir_byte = CMD_DATA_LOW
 	# should wait for 3 cycles here, assume we don't have to
