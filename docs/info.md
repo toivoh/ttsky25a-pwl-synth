@@ -194,8 +194,8 @@ The `waveform` field consists of the two bits mode register bits `{wf1, wf0}`. T
 |                        | 0b11  | Orion Wave                          |
 |                        |       |                                     |
 | `osc_sync`             | 0     | Sync off                            |
-|                        | 1     | 4 bit / *quantized* mode (sync off) |
-|                        | 2     | Hard sync                           |
+|                        | 1     | Hard sync                           |
+|                        | 2     | 4 bit / *quantized* mode (sync off) |
 |                        | 3     | Soft sync                           |
 
 <a name="sweep_fields"></a>
@@ -606,7 +606,7 @@ In the stereo case, the frequency ratio is of course controlled by setting frequ
 <a name="4bit_mode"></a>
 ### 4 bit mode
 
-When `osc_sync = 1` in the `mode register`, the output of the slope step is quantized to 4 bits before going to the amplitude clamp step.
+When `osc_sync = 2` in the `mode register`, the output of the slope step is quantized to 4 bits before going to the amplitude clamp step.
 This can be used to imitate the triangle wave channel of the NES, which uses a 4 bit output. This adds some harmonics to the triangle wave, which is otherwise not very harmonically rich.
 4 bit mode can of course also be used to add harmonics to other waveforms.
 
