@@ -2502,13 +2502,32 @@ module pwls_multichannel_ALU_unit #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BI
 
 	assign curr_sub_channel = DETUNE_ON ? term_index_eff[0] : 0;
 
+
+`ifndef USE_CHANNEL_PIPELINE_REGS
 	wire [BITS-1:0] curr_phase = phases[curr_channel];
 	wire [PERIOD_BITS-1:0] curr_period = periods[curr_channel];
 
 	//wire [AMP_BITS-1:0] amp = amps[curr_channel];
 	wire [BITS-2-1:0] amp0 = {amps[curr_channel], {(BITS-2-6){1'b0}}};
-	wire [BITS-2-1:0] amp = amp0 >> halve_amp;
 	assign channel_mode = modes[curr_channel];
+`else
+	reg [BITS-1:0] curr_phase;
+	reg [PERIOD_BITS-1:0] curr_period;
+	reg [BITS-2-1:0] amp0;
+	reg [`CHANNEL_MODE_BITS-1:0] curr_mode;
+
+	always_ff @(posedge clk) begin
+		curr_phase <= phases[next_curr_channel];
+		curr_period <= periods[next_curr_channel];
+
+		//wire [AMP_BITS-1:0] amp = amps[curr_channel];
+		amp0 <= {amps[next_curr_channel], {(BITS-2-6){1'b0}}};
+		curr_mode <= modes[next_curr_channel];
+	end
+	assign channel_mode = curr_mode;
+`endif
+	wire [BITS-2-1:0] amp = amp0 >> halve_amp;
+
 
 	wire [DETUNE_EXP_BITS-1:0] detune_exp = channel_mode[2:0];
 
@@ -2516,15 +2535,30 @@ module pwls_multichannel_ALU_unit #(parameter BITS=12, BITS_E=13, SHIFT_COUNT_BI
 	// New register map
 	// ----------------
 	// ### slope
+`ifndef USE_CHANNEL_PIPELINE_REGS
 	wire [7:0] slope0 = slopes0[curr_channel];
 	wire [7:0] slope1 = slopes1[curr_channel];
+`else
+	reg [7:0] slope0, slope1;
+	always_ff @(posedge clk) begin
+		slope0 <= slopes0[next_curr_channel];
+		slope1 <= slopes1[next_curr_channel];
+	end
+`endif
+
 	wire [7:0] slope = part ? slope1 : slope0;
 
 	wire [SLOPE_EXP_BITS-1:0] slope_exp_eff = slope[7:4];
 	wire [BITS-3-1:0] slope_offset_eff = {slope[3:0], {(BITS-3-4){1'b0}}};
 
 	// ### pwm_offset
+`ifndef USE_CHANNEL_PIPELINE_REGS
 	wire [7:0] pwm_offset = pwm_offsets[curr_channel];
+`else
+	reg [7:0] pwm_offset;
+	always_ff @(posedge clk) pwm_offset <= pwm_offsets[next_curr_channel];
+`endif
+
 	wire signed [BITS-1:0] tri_offset_eff = {keep_exp_on_top ? 2'b00 : 2'b11, pwm_offset, {(BITS-2-8){1'b0}}};
 
 	// ### sweeps

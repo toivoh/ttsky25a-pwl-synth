@@ -8,7 +8,9 @@
 `define USE_NEW_REGMAP_B // only takes effect if USE_NEW_REGMAP is enabled
 `endif
 
+`ifndef PURE_RTL
 `define PURE_RTL
+`endif
 
 `define USE_PHASE_LATCHES
 //`define USE_P_LATCHES_ONLY
@@ -44,6 +46,7 @@
 
 
 `define USE_MORE_REG_RESETS
+`define USE_CHANNEL_PIPELINE_REGS
 
 
 `ifdef USE_STEREO
