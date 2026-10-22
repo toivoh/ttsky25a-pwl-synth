@@ -1875,7 +1875,7 @@ module pwls_ALU_unit #(parameter BITS=12, BITS_E=13, NUM_CHANNELS=4, SHIFT_COUNT
 `ifdef PIPELINE_SRC2
 			acc <= src2; // Use acc as pipeline register for src2
 `else
-			if ((dest_sel & `DEST_SEL_ACC) != 0) acc <= result;
+			if ((dest_sel & `DEST_SEL_ACC) != 0) {read_msbs_reg, acc} <= {{(16-ACC_BITS){1'b0}}, result};
 `endif
 
 			if (pred_we) pred <= pred_next;

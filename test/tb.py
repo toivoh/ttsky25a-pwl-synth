@@ -112,6 +112,10 @@ async def test_project(dut):
 		n_high, n_total = await read_pwm_duty(dut, True)
 		assert (n_high, n_total) == (n_high_0, n_total_0)
 
+	# Write and read back top bits of detune_counter just to put a nonzero value into read_msbs_reg
+	await reg_write(dut, 4*10+1, 0x4000)
+	await reg_read(dut, 4*10+1)
+
 	# Test register write and read back
 	dut._log.info("Test register write and read back")
 	await ClockCycles(dut.clk, 4)
