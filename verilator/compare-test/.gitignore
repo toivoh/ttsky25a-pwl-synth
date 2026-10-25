@@ -1,0 +1,5 @@
+obj_dir/
+*.raw
+*.wav
+*.vcd
+*data.txt

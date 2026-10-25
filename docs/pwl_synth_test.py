@@ -18,13 +18,13 @@ def sleep(t):
 def test1():
 	notes = [("C", 4), ("G", 4), ("B", 4), ("C", 5)]
 	channel = 0
-	relative_detune = 0  # Try to increase decrease, or set to None to turn off detuning
+	rel_detune = 0  # Try to increase decrease, or set to None to turn off detuning
 
 	# Fade out each note by sweeping down amp. Set amp_rate=0 to keep sustained.
 	set_period_amp_sweep(channel, amp_target=0, amp_rate=12)  # amp_rate = 12 should ramp down in around 0.5 s at 64 MHz clock frequency
 
 	for note in notes:
-		play_note(channel, note, relative_detune=relative_detune)
+		play_note(channel, note, rel_detune=rel_detune)
 
 		sleep(0.5)
 	sleep(0.5)
@@ -32,12 +32,12 @@ def test1():
 
 def test2():
 	notes = [("D", 3), ("G", 3), ("C", 4), ("Eb", 4)]
-	relative_detune = 0  # Try to increase decrease, or set to None to turn off detuning
+	rel_detune = 0  # Try to increase decrease, or set to None to turn off detuning
 	for (channel, note) in enumerate(notes):
 		# Fade in each note by sweeping up amp. Takes effect when the next note is played.
 		set_period_amp_sweep(channel, amp_target=63, amp_rate=12)  # amp_rate = 12 should ramp down in around 0.5 s at 64 MHz clock frequency
 
-		play_note(channel, note, amp=0, relative_detune=relative_detune)
+		play_note(channel, note, amp=0, rel_detune=rel_detune)
 
 		sleep(0.5)
 	sleep(0.5)
@@ -83,22 +83,35 @@ def test3():
 	set_waveform(channel, slope_r=0, slope_f=0, pwm_offset=0, waveform=WAVEFORM_NOISE)
 
 	# Sawtooth-like wave with common saturation (works only on channel 0) and (3x, 2x) frequency multiplier (power chord).
-	# Play one octave lower than it is intended to sound, since the frequency multipliers raise the frequency.
+	# Play one octave lower than it is intended to sound, since the frequency multipliers raise the frequency. (try at octave 2 or 3)
 	slope = 12*16  # Reduce to make it smoother
-	set_waveform(channel, slope_r=0, slope_f=slope, pwm_offset=0, freq_multipliers=3, common_sat=True)
+	set_waveform(channel, slope_r=0, slope_f=slope, pwm_offset=0, freq_mults=3, common_sat=True)
 	# Try with set_pwm_slope_sweep(channel, slope_down=True, slope_rate=12)
 
-	set_pwm_slope_sweep(channel, slope_down=True, slope_rate=10)  # slope_rate = 10 should be enough to sweep from full slope to zero in about 0.5 s
+	set_pwm_slope_sweep(channel, slope_down=True, slope_rate=13)  # slope_rate = 13 should be enough to sweep from full slope to zero in about 2 s
 
+	# Bass drum
 	set_waveform(channel, slope_r=16, slope_f=16)
-	set_period_amp_sweep(channel, period_down=False, period_rate=1, amp_target=0, amp_rate=8)
-	play_note(channel, ("C", 4), amp=63, relative_detune=None)
+	set_period_amp_sweep(channel, period_down=False, period_rate=4, amp_target=0, amp_rate=12)
+	play_note(channel, ("C", 4), amp=63, rel_detune=None)
 
 	sleep(1)
 
-	set_period_amp_sweep(channel, period_down=False, period_rate=1, amp_target=0, amp_rate=10)
+	# Hihat
 	set_waveform(channel, slope_r=0, slope_f=0, pwm_offset=0, waveform=WAVEFORM_NOISE)
-	play_note(channel, ("Bb", 7), amp=63, relative_detune=None)  # Bb7 is the highest note in the scale right now
+	set_period_amp_sweep(channel, period_down=False, period_rate=0, amp_target=0, amp_rate=8)
+	play_note(channel, ("Bb", 7), amp=63, rel_detune=None)  # Bb7 is the highest note in the scale right now
+
+	# Longer noise drum
+	set_waveform(channel, slope_r=0, slope_f=0, pwm_offset=0, waveform=WAVEFORM_NOISE)
+	set_period_amp_sweep(channel, period_down=False, period_rate=6, amp_target=0, amp_rate=12)
+	play_note(channel, ("C", 5), amp=63, rel_detune=None) # snare drum like
+	play_note(channel, ("C", 7), amp=63, rel_detune=None) # cymbal like
+
+	# Orion wave
+	set_waveform(0,waveform=3,pwm_offset=255,slope_f=255) # full bitmask in slope_f, take out some bits to change the waveform
+	play_note(0,36,rel_detune=12)
+	for r in range(256): time.sleep(0.1); reg_write(0,REG_SLOPE_R,r) # go through the offset options
 
 if True:
 	channel = 0

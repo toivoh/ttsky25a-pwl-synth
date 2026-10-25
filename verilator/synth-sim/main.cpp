@@ -54,6 +54,9 @@ const int log2_downsampling = 4;
 // 18: common_sat + 4 bit
 // 15: orion pedal
 // 16: oscillator sync
+// 20: decreasing dcounter_step, C2
+// 21: decreasing dcounter_step, C2-Eb2-G2-Bb2
+// 22: C - G - C - G, the latter two with pitch doubling
 const int tune = 1;
 
 //const bool DETUNE_ON = false;
@@ -185,7 +188,8 @@ int encode_sweep_rate(int sweep_rate) {
 }
 
 void period_write(int channel, int period) { reg_write(PERIOD_ADDR, channel, period); }
-void period_write(int channel, int octave, int mantissa) { period_write(channel, (octave << MANTISSA_BITS) | mantissa); }
+//void period_write(int channel, int octave, int mantissa) { period_write(channel, (octave << MANTISSA_BITS) | mantissa); }
+void period_write(int channel, int octave, int mantissa, bool double_pitch=false) { period_write(channel, (double_pitch << PERIOD_BITS) | (octave << MANTISSA_BITS) | mantissa); }
 
 void amp_write(int channel, int amp) { reg_write(AMP_ADDR, channel, amp); }
 void mode_write(int channel, int detune_exp, int flags=0, int phase_factors=0) { reg_write(MODE_ADDR, channel, (((phase_factors&7)<<4)|(detune_exp*DETUNE_ON)&7) | flags); }
@@ -343,7 +347,7 @@ int main(int argc, char** argv) {
 
 	if (tune == 0 || tune == 14) {
 		amp_write(0, 63);
-		mode_write(0, 5*DETUNE_ON, MODE_FLAG_PWL_OSC);
+		mode_write(0, 5*DETUNE_ON, tune == 14 ? MODE_FLAG_PWL_OSC : 0);
 	} else if (tune == 1) {
 		//top->tri_offset = (1 << (BITS-1-2)) - (1 << (BITS-2));
 		top->tri_offset = -(1 << (BITS-2));
@@ -435,6 +439,24 @@ int main(int argc, char** argv) {
 		amp_write(2, 0);
 		amp_write(3, 63);
 		period_write(2, 4, note_mantissas[0]); // C4
+	} else if (tune == 20) {
+		amp_write(0, 63);
+		period_write(0, 2, note_mantissas[0]); // C2
+		int detune_exp = 7;
+		mode_write(0, detune_exp);
+	} else if (tune == 21) {
+		int detune_exp = 7;
+		for (int i = 0; i < 4; i++) {
+			amp_write(i, 63);
+			mode_write(i, detune_exp);
+		}
+		period_write(0, 2, note_mantissas[0]); // C2
+		period_write(1, 2, note_mantissas[3]); // Eb2
+		period_write(2, 2, note_mantissas[7]); // G2
+		period_write(3, 2, note_mantissas[10]); // Bb2
+	} else if (tune == 22) {
+		amp_write(0, 63);
+		mode_write(0, 5*DETUNE_ON);
 	}
 
 // Main loop
@@ -698,6 +720,20 @@ int main(int argc, char** argv) {
 
 				int sweep_rate = 2+LOG2_SAMPLES_PER_NOTE-1+4-12 - 1;
 				sweep_period_amp_write(3, sweep_rate, 1);
+			}
+		} else if (tune == 20 || tune == 21) {
+			// Set decreasing dcounter_step
+			int dcounter_step = (~(i >> (2+LOG2_SAMPLES_PER_NOTE - 9))) & 511;
+			int cfg = dcounter_step << CFG_BIT_DETUNE_STEP0;
+			cfg_write(cfg);
+		} else if (tune == 22) {
+			// Play a melody on channel 0
+			if ((i & ((1 << LOG2_SAMPLES_PER_NOTE) - 1)) == 0) {
+				int t = i >> LOG2_SAMPLES_PER_NOTE;
+				int octave = 3;
+				int mantissa = (t&1) ? note_mantissas[7] : note_mantissas[0];
+
+				period_write(0, octave, mantissa, t >=2);
 			}
 		}
 	}

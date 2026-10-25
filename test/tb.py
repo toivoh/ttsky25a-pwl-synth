@@ -42,7 +42,7 @@ CMD_DATA_LOW = 1
 
 READ_WAITING = 32
 
-reg_bits = [13, 6, 8, 8, 8, 16, 13, 13, 12, 13, 16]
+reg_bits = [14, 6, 8, 8, 8, 16, 13, 13, 12, 13, 16]
 
 async def reg_write(dut, addr, value):
 	bits = reg_bits[addr>>2]
@@ -99,7 +99,7 @@ async def test_project(dut):
 
 	dut._log.info("Test project behavior: PWL Synth")
 
-	nbits = [13, 6, 8, 8, 8, 16]
+	nbits = [14, 6, 8, 8, 8, 16]
 
 	dut._log.info("Check initial PWM output")
 	await ClockCycles(dut.clk, 100)

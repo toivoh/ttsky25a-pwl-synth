@@ -40,6 +40,19 @@
 const int seq_extra_exp = 0;
 
 
+// ~64 MHz clock
+//const int PWL_SPEEDUP = 0;
+
+// ~32 MHz clock
+const int PWL_SPEEDUP = 1;
+
+
+const int DETUNE_SRC_RSHIFT = 6 - PWL_SPEEDUP;
+
+
+const int PMODE_BITS = 1;
+
+
 //#define USE_P_LATCHES_ONLY
 #define USE_NEW_READ
 #define USE_ORION_WAVE
@@ -71,8 +84,8 @@ const int OUT_ACC_FRAC_BITS = 4;
 const int OUT_ACC_INITIAL_TOP = 512 >> OUT_ACC_FRAC_BITS;
 const int OUT_ACC_INITIAL_TOP_STEREO = 768 >> OUT_ACC_FRAC_BITS;
 const int OCT_COUNTER_BITS = 24;
-const int LFSR_HIGHEST_OCT = 2;
-const int LFSR_HIGHEST_OCT2 = 3;
+const int LFSR_HIGHEST_OCT = 2 - PWL_SPEEDUP;
+const int LFSR_HIGHEST_OCT2 = 3 - PWL_SPEEDUP;
 
 const int OUT_RSHIFT = 4;
 const int REV_PHASE_SHR = 0;
@@ -95,7 +108,7 @@ const int REG_DETUNE_COUNTER = 10;
 #endif
 const int REGS_PER_CHANNEL = 9; // Keep at 9; Don't count oct_counter; it is still counted as a core register
 
-const int num_reg_rand_bits[REGS_PER_CHANNEL] = {OCT_BITS + MANTISSA_BITS, 6, 8, 8, 8, 16, 16, 16, BITS};
+const int num_reg_rand_bits[REGS_PER_CHANNEL] = {OCT_BITS + MANTISSA_BITS + PMODE_BITS, 6, 8, 8, 8, 16, 16, 16, BITS};
 // Only used for swept parameters:
 const int reg_bits[] = {OCT_BITS + MANTISSA_BITS, 6, 8, 8, 8};
 const int sweep_bits[] = {5, 7, 7, 7, 5};
@@ -120,8 +133,10 @@ const int MODE_BIT_QUANT0 = 13;
 const int MODE_BIT_QUANT1 = 14;
 const int MODE_BIT_QUANT2 = 15;
 
-
 const int MODE_FLAGS_OSC_SYNC_MASK = MODE_FLAG_OSC_SYNC_EN | MODE_FLAG_OSC_SYNC_SOFT;
+
+
+const int PMODE_BIT_DOUBLE_PITCH = 0;
 
 
 const int CFG_FLAG_STEREO_EN = 1;
@@ -347,6 +362,7 @@ struct Model {
 	int quant_mask() { return -1 << (BITS-1-4); }
 #endif
 	bool linear_noise_en() { return (cfg & CFG_FLAG_LINEAR_NOISE) != 0; }
+	int get_channel_period() { return get_channel_reg(REG_PERIOD) & ((1 << PERIOD_BITS) - 1); }
 };
 
 #ifdef USE_ORION_WAVE
@@ -416,7 +432,7 @@ void model_oscillator(Model &m) {
 	}
 
 
-	int f_period = m.get_channel_reg(REG_PERIOD);
+	int f_period = m.get_channel_period();
 	int mantissa = f_period & ((1 << MANTISSA_BITS) - 1);
 	int period_exp = f_period >> MANTISSA_BITS;
 
@@ -549,9 +565,9 @@ void model_detune(Model &m, int old_phase) {
 #ifdef DEBUG_DETUNE
 			printf("linear_noise: slow: x = 0x%x\n", x);
 #endif
-			int octave = (~m.get_channel_reg(REG_PERIOD) >> MANTISSA_BITS) & ((1 << OCT_BITS)-1);
+			int octave = (~m.get_channel_period() >> MANTISSA_BITS) & ((1 << OCT_BITS)-1);
 			int mask = slow ? (1 << (BITS-2)) - 1 : (1 << (BITS-1)) - 1;
-			x += ((m.oct_counter>>1) << (octave + !slow)) & mask;
+			x += ((m.oct_counter>>(1-PWL_SPEEDUP)) << (octave + !slow)) & mask; // If `PWL_SPEEDUP > 1 is needed, we'll have to start shifting in zeros
 #ifdef DEBUG_DETUNE
 			printf("linear_noise: x = 0x%x\n", x);
 #endif
@@ -600,10 +616,10 @@ void model_detune(Model &m, int old_phase) {
 	} else {
 		int detune = 0;
 		if (detune_exp != 0 && !detune_disable) {
-			//int detune_src = m.oct_counter >> 6;
+			//int detune_src = m.oct_counter >> DETUNE_SRC_RSHIFT;
 			//detune = detune_src >> (7 - detune_exp);
 #ifdef USE_DETUNE_COUNTER
-			detune = m.detune_counter >> ((8+6+7) - detune_exp);
+			detune = m.detune_counter >> ((8+DETUNE_SRC_RSHIFT+7) - detune_exp);
 #ifdef DEBUG_DETUNE
 			printf("detune_counter = 0x%x\n", m.detune_counter);
 #endif
@@ -635,6 +651,7 @@ void model_tri_pwm_offset(Model &m) {
 	int mode = m.get_channel_reg(REG_MODE);
 	int pwm_offset = (m.get_channel_reg(REG_PWM_OFFSET) << (BITS-2-8)) - (1 << (BITS-2));
 	int lshift = (m.get_subchannel() == 1 && m.phase_factor_en()) ? (mode >> MODE_BIT_X2N0) & 3 : 0;
+	lshift += (m.get_channel_reg(REG_PERIOD) >> (PERIOD_BITS + PMODE_BIT_DOUBLE_PITCH)) & 1;
 
 	int x = m.acc & ((1 << BITS) - 1);
 #ifdef DEBUG_TRI
@@ -898,6 +915,7 @@ int model_sweep(Model &m) {
 	else enable = (oct_enables >> rate) & 1;
 
 	int value = m.get_reg(sweep_channel, sweep_index);
+	value &= ((1 << PERIOD_BITS) - 1); // Don't sweep pmode bits. No other register has more sweepable bits than f_period.
 
 	if (sweep_index == REG_AMP) {
 		int amp_target = ((sweep >> 4)&7)*9;
@@ -915,7 +933,10 @@ int model_sweep(Model &m) {
 
 	value += sign ? -1 : 1;
 	m.acc = value;
-	if (enable) m.set_reg(sweep_channel, sweep_index, value);
+	if (enable) {
+		if (sweep_index == REG_PERIOD) m.set_reg(sweep_channel, sweep_index, value | (m.get_reg(sweep_channel, sweep_index) & (-1 << PERIOD_BITS)));
+		else m.set_reg(sweep_channel, sweep_index, value);
+	}
 
 	return reg_bits[sweep_index];
 }

@@ -3,16 +3,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-`define USE_NEW_REGMAP
-`ifdef USE_NEW_REGMAP
-`define USE_NEW_REGMAP_B // only takes effect if USE_NEW_REGMAP is enabled
-`endif
 
 `ifndef PURE_RTL
 `define PURE_RTL
 `endif
 
-`define USE_PHASE_LATCHES
+// ~64 MHz clock
+//`define PWL_SPEEDUP 0
+
+// ~32 MHz clock: speed up detuning and LFSR
+`define PWL_SPEEDUP 1
+
+
+`define USE_PITCH_DOUBLER // needed for ~32 MHz clock to still reach ~4 kHz
+
+`define DETUNE_SRC_RSHIFT (6 - `PWL_SPEEDUP)
+
 //`define USE_P_LATCHES_ONLY
 //`define USE_LSB_DELAY_REGS
 `define USE_OCT_COUNTER_LATCHES
@@ -20,10 +26,6 @@
 `define USE_NEW_READ
 `define USE_OUTPUT_BUFFERS
 `define USE_ALT_INTERFACE
-
-`define USE_SLOPE_EXP_REGS
-`define USE_PARAMS_REGS
-`define USE_SWEEP_REGS
 
 `define USE_3X_FLAG
 `define USE_X2N_FLAGS
@@ -49,9 +51,9 @@
 `define USE_CHANNEL_PIPELINE_REGS
 
 
-`ifdef USE_STEREO
+//`ifdef USE_STEREO
 `define USE_GLOBAL_CFG_REG
-`endif
+//`endif
 
 // Only used for verilator tests
 //// `define USE_TEST_INTERFACE
@@ -63,32 +65,17 @@
 `define USE_OLD_READ
 `endif
 
-`ifdef USE_NEW_REGMAP
-//	`define CHANNEL_MODE_BITS 4
-	`define CHANNEL_MODE_BITS 16
-	`ifdef USE_NEW_REGMAP_B
-		`define REGS_PER_CHANNEL 8
-		`define REG_BITS 16 // Could be 13? If the registers don't grow too much
-	`else
-		`define USE_NEW_REGMAP_A
-		`define REGS_PER_CHANNEL 6
-		`define REG_BITS 18
-	`endif
-`else
-	`define REGS_PER_CHANNEL 5
-	`ifdef USE_SLOPE_EXP_REGS
-		`define CHANNEL_MODE_BITS 12
-	`else
-		`define CHANNEL_MODE_BITS 4
-	`endif
-	`define REG_BITS 16
+`ifdef USE_X2N_FLAGS
+`define USE_X2N_FLAGS_OR_PITCH_DOUBLER
+`endif
+`ifdef USE_PITCH_DOUBLER
+`define USE_X2N_FLAGS_OR_PITCH_DOUBLER
 `endif
 
-`ifdef USE_PHASE_LATCHES
-	`define REG_ADDR_BITS 6
-`else
-	`define REG_ADDR_BITS 5
-`endif
+`define REGS_PER_CHANNEL 8
+`define REG_BITS 16 // Could be 13? If the registers don't grow too much
+
+`define REG_ADDR_BITS 6
 
 `define CFG_BIT_STEREO_EN 0
 `define CFG_BIT_STEREO_POS_EN 1
@@ -114,6 +101,12 @@
 `define CHANNEL_MODE_BIT_QUANT0 13
 `define CHANNEL_MODE_BIT_QUANT1 14
 `define CHANNEL_MODE_BIT_QUANT2 15
+`define CHANNEL_MODE_BITS 16
+
+
+`define PMODE_BIT_DOUBLE_PITCH 0
+`define PMODE_BITS 1
+
 
 `define CHANNEL_MODE_FLAGS_OSC_SYNC_MASK ((1<<`CHANNEL_MODE_BIT_OSC_SYNC_EN)|(1<<`CHANNEL_MODE_BIT_OSC_SYNC_SOFT))
 
@@ -239,13 +232,6 @@
 `define ALWAYS_FF_POSEDGE_CLK always_ff @(posedge clk)
 //`define ALWAYS_FF_POSEDGE_CLK always_ff @(posedge clk, negedge rst_n)
 
-
-//`define PIPELINE
-
-`ifdef PIPELINE // only applicable if PIPELINE enabled:
-`define PIPELINE_SRC2
-`define PIPELINE_SRC2_LSHIFT
-`endif
 
 `define PIPELINE_CURR_CHANNEL
 
